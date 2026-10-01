@@ -15,6 +15,10 @@ plata/
 oro/
 *.parquet
 
+# Microdatos crudos DANE; se mantienen fuera del repositorio.
+GEIH_2025/
+ENUT/
+
 # Archivos temporales y de herramientas
 .DS_Store
 .env

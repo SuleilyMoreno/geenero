@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Ejecuta el pipeline 2025: APIs externas + GEIH local.
+"""Ejecuta el pipeline 2025: APIs externas + GEIH DANE local.
 
 Las fuentes externas nunca se buscan en carpetas locales: se descargan desde
-los endpoints suministrados por variables de entorno. GEIH es la única
-excepción y se lee desde GEIH_2025_normalizada/.
+los endpoints suministrados por variables de entorno. GEIH se lee desde
+GEIH_2025/ y se decodifica con el diccionario oficial.
 
 Variables requeridas:
   SUPER_DATASET_ID, SUPER_ANIO_FIELD, SUPER_CIIU_FIELD
@@ -42,15 +42,13 @@ def main() -> None:
     PLATA.mkdir(exist_ok=True)
     ORO.mkdir(exist_ok=True)
 
-    # 1. GEIH: única fuente local. Requiere pasar explícitamente los dos
-    # archivos porque sus nombres pueden variar entre entregas DANE.
-    viviendas = requerido("GEIH_VIVIENDAS")
-    personas = requerido("GEIH_PERSONAS")
+    # 1. GEIH: fuente local oficial, por mes y módulo. No se concatena
+    # indiscriminadamente: el decodificador conserva cada esquema.
     ejecutar(
-        "procesar_geih_2025_limpia.py",
-        "--viviendas", viviendas,
-        "--personas", personas,
-        "--output", str(PLATA / "geih_2025_limpia.parquet"),
+        "decodificar_geih_2025.py",
+        "--datos", str(ROOT / "GEIH_2025"),
+        "--diccionario", str(ROOT / "Diccionario_de_datos_GEIH_2025.xlsx"),
+        "--salida", str(PLATA / "geih_2025_decodificada"),
     )
 
     # 2. Fuentes externas: siempre API/URL, nunca archivos locales de entrada.
