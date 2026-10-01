@@ -8,7 +8,10 @@ import pandas as pd
 
 BASE = Path(__file__).resolve().parent
 PLATA, ORO = BASE / "plata", BASE / "oro"
-CTX, GEIH, FIN = (PLATA / x for x in ("contexto_municipal_2025.parquet", "geih_2025_limpia.parquet", "finagro_2025_limpia.parquet"))
+# La antigua geih_2025_limpia.parquet ya no se usa. Esta capa disponible conserva
+# la llave departamental; las métricas individuales quedan N/D hasta integrar
+# directamente los módulos GEIH decodificados.
+CTX, GEIH, FIN = (PLATA / x for x in ("contexto_municipal_2025.parquet", "departamento_2025_aggregado.parquet", "finagro_2025_limpia.parquet"))
 OUT, HTML = ORO / "tablero_departamentos_2025.parquet", BASE / "departamentos_dashboard.html"
 
 def pick(cols, *names): return next((x for x in names if x in cols), None)
