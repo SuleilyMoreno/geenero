@@ -1,0 +1,21 @@
+# Entornos y archivos generados por Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Bases de datos y archivos de origen
+*.csv
+*.xlsx
+*.xls
+*.xlsm
+
+# Capas del Data Lakehouse y salidas Parquet
+bronce/
+plata/
+oro/
+*.parquet
+
+# Archivos temporales y de herramientas
+.DS_Store
+.env
+*.log
