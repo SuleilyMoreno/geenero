@@ -1,35 +1,64 @@
 #!/usr/bin/env python3
-from pathlib import Path
-import json, math, duckdb
-from dashboard_config import apply_common_style
+"""Inclusión financiera de los hogares rurales 2025 (GEIH 2025, CLASE 2/3).
 
-BASE=Path(__file__).resolve().parent; P=BASE/'plata'; O=BASE/'oro'; OUT=O/'tablero_financiero_nacional_2025.parquet'; HTML=BASE/'financiero_dashboard.html'
-FG=str(P/'finagro_2025_limpia.parquet'); SF=str(P/'superfinanciera_2025_limpia.parquet'); CTX=str(P/'contexto_municipal_2025.parquet'); GEIH=str(P/'geih_2025_decodificada/*__datos_del_hogar_y_la_vivienda.parquet')
+Unidad: hogar (mes_archivo + DIRECTORIO + HOGAR), expandido con FEX_C18 / meses.
+El sexo y el nivel educativo corresponden a la persona jefe de hogar
+(parentesco = 1). Los datos de crédito (Finagro y Superfinanciera) los aporta
+extraer_credito_rural_2025.py.
 
-def main():
- O.mkdir(exist_ok=True); c=duckdb.connect()
- q=f"""WITH creditos AS (SELECT 'FINAGRO' fuente,CAST(Sexo AS VARCHAR) sexo,TRY_CAST(monto AS DOUBLE) monto,TRY_CAST(tasa AS DOUBLE) tasa FROM read_parquet('{FG}') UNION ALL SELECT 'SUPERFINANCIERA',CAST(Sexo AS VARCHAR),TRY_CAST(monto AS DOUBLE),TRY_CAST(tasa AS DOUBLE) FROM read_parquet('{SF}')), resumen AS (SELECT AVG(monto) FILTER(WHERE lower(sexo) IN ('f','2')) monto_mujeres,AVG(monto) FILTER(WHERE lower(sexo) IN ('m','1')) monto_hombres,AVG(tasa) FILTER(WHERE lower(sexo) IN ('f','2')) tasa_mujeres,AVG(tasa) FILTER(WHERE lower(sexo) IN ('m','1')) tasa_hombres,COUNT(*) total_creditos,COUNT(*) FILTER(WHERE lower(sexo) IN ('f','2')) creditos_mujeres,COUNT(*) FILTER(WHERE lower(sexo) IN ('m','1')) creditos_hombres FROM creditos), cobertura AS (SELECT AVG(TRY_CAST(densidad_bancaria AS DOUBLE)) densidad_bancaria FROM read_parquet('{CTX}')) SELECT 2025 anio,r.*,c.densidad_bancaria,CAST(NULL AS DOUBLE) plazo_meses,CAST(NULL AS DOUBLE) sucursales_fisicas FROM resumen r CROSS JOIN cobertura c"""
- summary=c.execute(q).fetchdf(); c.execute('COPY ('+q+') TO ? (FORMAT PARQUET, COMPRESSION ZSTD)',[str(OUT)])
- prods=[('Cuenta corriente','cuales_de_los_siguientes_productos_financieros_utiliza'),('Cuenta de ahorros','cuales_de_los_siguientes_productos_financieros_utiliza_2'),('CDT','cuales_de_los_siguientes_productos_financieros_utiliza_3'),('Préstamo para vivienda','cuales_de_los_siguientes_productos_financieros_utiliza_4'),('Préstamo para vehículo','cuales_de_los_siguientes_productos_financieros_utiliza_5'),('Préstamo de libre inversión','cuales_de_los_siguientes_productos_financieros_utiliza_6'),('Tarjeta de crédito','cuales_de_los_siguientes_productos_financieros_utiliza_7'),('Otro producto','cuales_de_los_siguientes_productos_financieros_utiliza_8'),('Ningún producto','cuales_de_los_siguientes_productos_financieros_utiliza_9'),('No sabe','cuales_de_los_siguientes_productos_financieros_utiliza_10')]
- products=[]
- for name,col in prods:
-  v=c.execute(f"SELECT COALESCE(SUM(CASE WHEN TRY_CAST(\"{col}\" AS INTEGER)=1 THEN COALESCE(TRY_CAST(FEX_C18 AS DOUBLE),1) ELSE 0 END),0) FROM read_parquet('{GEIH}') WHERE CAST(CLASE AS VARCHAR) IN ('2','3')").fetchone()[0]; products.append({'producto':name,'hogares':v})
- s=summary.iloc[0].to_dict()
- def clean(v):
-  if v is None: return None
-  if isinstance(v,(int,float)):
-   return float(v) if math.isfinite(float(v)) else None
-  return v
- data={'summary':{k:clean(v) for k,v in s.items()},'products':products}
- c.close(); html=render(json.dumps(data,ensure_ascii=False))
- html=html.replace("<article class='card'><div class='label'>Monto promedio aprobado para mujeres</div><div class='value' id='monto'>N/D</div><div class='source'>Promedio de monto en Finagro y Superfinanciera, sexo femenino.</div></article>", "<article class='card'><div class='label'>Monto promedio aprobado por sexo</div><div style='display:flex;gap:14px'><div><small>Mujeres</small><div class='value' id='monto_mujeres'>N/D</div></div><div><small>Hombres</small><div class='value' id='monto_hombres'>N/D</div></div></div><div class='source'>Promedio de monto en Finagro y Superfinanciera.</div></article>")
- html=html.replace("<article class='card'><div class='label'>Tasa promedio mujeres</div><div class='value amber' id='tm'>N/D</div><div class='source'>Tasa reportada por Finagro y Superfinanciera.</div></article><article class='card'><div class='label'>Tasa promedio hombres</div><div class='value amber' id='th'>N/D</div><div class='source'>Tasa reportada por Finagro y Superfinanciera.</div></article>", "<article class='card'><div class='label'>Tasa promedio por sexo</div><div style='display:flex;gap:14px'><div><small>Mujeres</small><div class='value amber' id='tasa_mujeres'>N/D</div></div><div><small>Hombres</small><div class='value amber' id='tasa_hombres'>N/D</div></div></div><div class='source'>Tasa reportada por Finagro y Superfinanciera.</div></article>")
- html=html.replace("<article class='card'><div class='label'>Créditos agrarios aprobados</div><div class='value' id='creditos'>N/D</div><div class='source'>Registros de Finagro y Superfinanciera.</div></article>", "<article class='card'><div class='label'>Créditos aprobados por sexo</div><div style='display:flex;gap:14px'><div><small>Mujeres</small><div class='value' id='creditos_mujeres'>N/D</div></div><div><small>Hombres</small><div class='value' id='creditos_hombres'>N/D</div></div></div><div class='source'>Registros de Finagro y Superfinanciera.</div></article>")
- html=html.replace("<article class='card'><div class='label'>Sucursales físicas</div><div class='value amber'>N/D</div><div class='source'>No existe una columna de sucursales físicas. Se reporta densidad bancaria en el gráfico.</div></article>", "")
- html=html.replace("monto.textContent=COP(S.monto_mujeres);tm.textContent=F(S.tasa_mujeres)+'%';th.textContent=F(S.tasa_hombres)+'%';creditos.textContent=F(S.total_creditos);", "document.getElementById('monto_mujeres').textContent=COP(S.monto_mujeres);document.getElementById('monto_hombres').textContent=COP(S.monto_hombres);document.getElementById('tasa_mujeres').textContent=F(S.tasa_mujeres)+'%';document.getElementById('tasa_hombres').textContent=F(S.tasa_hombres)+'%';document.getElementById('creditos_mujeres').textContent=F(S.creditos_mujeres);document.getElementById('creditos_hombres').textContent=F(S.creditos_hombres);")
- HTML.write_text(apply_common_style(html),encoding='utf-8'); print(f'OK: {OUT}'); print(f'OK: {HTML}')
+Salida: datos_tablero/inclusion_financiera_rural_2025.json
+"""
+from __future__ import annotations
 
-def render(data):
- return """<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Inclusión financiera rural 2025</title><script src='https://cdn.plot.ly/plotly-2.35.2.min.js'></script><style>body{margin:0;background:#070b12;color:#d7e2ed;font:15px system-ui}main{max-width:1400px;margin:auto;padding:28px}.hero h1{font-size:clamp(35px,6vw,70px);color:#20d47b}.sub,.source{color:#8293a6}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{grid-column:span 3;background:#0d141f;border:1px solid #263342;border-radius:12px;padding:18px;min-height:150px}.chart{grid-column:span 6;min-height:380px}.wide{grid-column:span 12}.label{color:#8293a6;text-transform:uppercase;font-size:11px}.value{font-size:30px;font-weight:800;color:#20d47b;margin:18px 0}.amber{color:#f5b942}.source{font-size:12px;margin-top:12px}@media(max-width:850px){.card,.chart,.wide{grid-column:span 12}}</style></head><body><main><section class='hero'><div>FINAGRO · SUPERFINANCIERA · GEIH · CONTEXTO MUNICIPAL</div><h1>Inclusión financiera rural</h1><p class='sub'>Monto, tasas, productos utilizados y cobertura financiera en el sector rural.</p></section><section class='grid'><article class='card'><div class='label'>Monto promedio aprobado para mujeres</div><div class='value' id='monto'>N/D</div><div class='source'>Promedio de monto en Finagro y Superfinanciera, sexo femenino.</div></article><article class='card'><div class='label'>Tasa promedio mujeres</div><div class='value amber' id='tm'>N/D</div><div class='source'>Tasa reportada por Finagro y Superfinanciera.</div></article><article class='card'><div class='label'>Tasa promedio hombres</div><div class='value amber' id='th'>N/D</div><div class='source'>Tasa reportada por Finagro y Superfinanciera.</div></article><article class='card'><div class='label'>Créditos agrarios aprobados</div><div class='value' id='creditos'>N/D</div><div class='source'>Registros de Finagro y Superfinanciera.</div></article><article class='card'><div class='label'>Tiempo promedio de crédito</div><div class='value amber'>N/D</div><div class='source'>No existe una variable de plazo en meses en las bases disponibles.</div></article><article class='card'><div class='label'>Sucursales físicas</div><div class='value amber'>N/D</div><div class='source'>No existe una columna de sucursales físicas. Se reporta densidad bancaria en el gráfico.</div></article><article class='card chart wide'><div id='productos'></div><div class='source'>Fuente: GEIH rural, módulo de productos financieros del hogar. Valores expandidos con FEX_C18.</div></article><article class='card chart'><div id='cobertura'></div><div class='source'>Fuente: Contexto Municipal. Densidad bancaria promedio; no equivale al número de sucursales.</div></article><article class='card chart'><div id='sexo_credito'></div><div class='source'>Fuente: Finagro 2025. Los créditos no representan personas únicas.</div></article></section></main><script>const D=__DATA__,S=D.summary,F=x=>x==null?'N/D':Number(x).toLocaleString('es-CO',{maximumFractionDigits:1}),COP=x=>x==null?'N/D':Number(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});monto.textContent=COP(S.monto_mujeres);tm.textContent=F(S.tasa_mujeres)+'%';th.textContent=F(S.tasa_hombres)+'%';creditos.textContent=F(S.total_creditos);const B={autosize:true,paper_bgcolor:'#0d141f',plot_bgcolor:'#0d141f',font:{color:'#d7e2ed'},margin:{l:20,r:20,t:55,b:20},showlegend:false};let p=D.products.filter(x=>x.hogares>0).sort((a,b)=>b.hogares-a.hogares);Plotly.newPlot('productos',[{x:p.map(x=>x.hogares),y:p.map(x=>x.producto),type:'bar',orientation:'h',marker:{color:'#20d47b'},text:p.map(x=>F(x.hogares)+' hogares'),textposition:'auto'}],{...B,title:{text:'Productos financieros utilizados en hogares rurales<br><sup>Las categorías pueden ser múltiples por hogar</sup>'},xaxis:{title:'Hogares estimados'},yaxis:{autorange:'reversed'}});Plotly.newPlot('cobertura',[{type:'indicator',mode:'gauge+number',value:S.densidad_bancaria||0,number:{font:{size:30}},gauge:{axis:{visible:true},bar:{color:'#20d47b'},bgcolor:'#17212d'}}],{...B,title:'Densidad bancaria promedio'});Plotly.newPlot('sexo_credito',[{labels:['Mujeres','Hombres'],values:[S.creditos_mujeres||0,S.creditos_hombres||0],type:'pie',hole:.5,textinfo:'label+percent'}],{...B,title:'Créditos agrarios por sexo'});</script></body></html>""".replace('__DATA__',data)
+import duckdb
 
-if __name__=='__main__': main()
+from agrupar_departamento_2025 import INCLUIDO, PRODUCTOS
+from tablero_comun import PERSONAS, VIVIENDA, geih, guardar_json, meses_geih, peso
+
+NOMBRES = ["Cuenta corriente", "Cuenta de ahorros", "CDT", "Crédito de vivienda", "Crédito de vehículo",
+           "Crédito de libre inversión", "Tarjeta de crédito", "Otro producto", "Ningún producto", "No sabe"]
+# P3042, nivel educativo más alto alcanzado (GEIH 2021 en adelante).
+NIVEL = """CASE WHEN cod IN (1,2) THEN '1. Ninguno o preescolar'
+    WHEN cod=3 THEN '2. Básica primaria' WHEN cod=4 THEN '3. Básica secundaria'
+    WHEN cod IN (5,6) THEN '4. Media' WHEN cod IN (7,8,9) THEN '5. Normalista, técnica o tecnológica'
+    WHEN cod=10 THEN '6. Universitaria' WHEN cod BETWEEN 11 AND 13 THEN '7. Posgrado' END"""
+
+
+def main() -> None:
+    con = duckdb.connect()
+    n = meses_geih(con)
+    marcas = ",".join(
+        f"MAX(CASE WHEN TRY_CAST({PRODUCTOS}{'' if i == 1 else f'_{i}'} AS INTEGER)=1 THEN 1 ELSE 0 END) p{i}"
+        for i in range(1, 11))
+    con.execute(f"""CREATE TEMP TABLE h AS
+      WITH v AS (SELECT mes_archivo, DIRECTORIO, HOGAR, MAX({peso('x', n)}) w,
+                        MAX(TRY_CAST(total_de_personas_en_el_hogar AS INTEGER)) tamano,
+                        MAX(CASE WHEN {INCLUIDO} THEN 1 ELSE 0 END) incluido, {marcas}
+                 FROM {geih(VIVIENDA)} x GROUP BY 1,2,3),
+      j AS (SELECT mes_archivo, DIRECTORIO, HOGAR,
+                   CASE TRY_CAST(cual_fue_su_sexo_al_nacer AS INTEGER) WHEN 1 THEN 'Hombres' WHEN 2 THEN 'Mujeres' END sexo,
+                   TRY_CAST(cual_es_el_mayor_nivel_educativo_alcanzado AS INTEGER) cod
+            FROM {geih(PERSONAS)} WHERE TRY_CAST(cual_es_el_parentesco_de_con_el AS INTEGER)=1)
+      SELECT v.*, j.sexo, {NIVEL} nivel FROM v LEFT JOIN j USING (mes_archivo, DIRECTORIO, HOGAR)""")
+    productos = con.execute("SELECT " + ",".join(f"100*SUM(p{i}*w)/SUM(w)" for i in range(1, 11)) + " FROM h").fetchone()
+    tasa = "100*SUM(incluido*w)/NULLIF(SUM(w),0)"
+    educacion = con.execute(f"""SELECT nivel, sexo, {tasa}, COUNT(*) FROM h
+        WHERE sexo IS NOT NULL AND nivel IS NOT NULL GROUP BY 1,2 ORDER BY 1,2""").fetchall()
+    tamano = con.execute(f"""SELECT CASE WHEN tamano>=6 THEN '6 o más' ELSE CAST(tamano AS VARCHAR) END t, sexo, {tasa}, COUNT(*)
+        FROM h WHERE sexo IS NOT NULL AND tamano IS NOT NULL GROUP BY 1,2 ORDER BY 1,2""").fetchall()
+    por_sexo = dict(con.execute(f"SELECT sexo, {tasa} FROM h WHERE sexo IS NOT NULL GROUP BY 1").fetchall())
+    con.close()
+
+    guardar_json("inclusion_financiera_rural_2025.json", {
+        "origen": f"GEIH 2025 ({n} meses), hogares rurales (CLASE 2/3).",
+        "pendientes": [],
+        "productos_pct": sorted(({"producto": p, "pct": v} for p, v in zip(NOMBRES, productos)), key=lambda x: -x["pct"]),
+        "inclusion_por_sexo_jefatura": por_sexo,
+        # Se omiten celdas con menos de 30 hogares en la muestra (estimación inestable).
+        "inclusion_por_educacion": [{"nivel": a, "sexo": s, "pct": v, "hogares_muestra": m} for a, s, v, m in educacion if m >= 30],
+        "inclusion_por_tamano": [{"tamano": a, "sexo": s, "pct": v, "hogares_muestra": m} for a, s, v, m in tamano if m >= 30],
+    })
+
+
+if __name__ == "__main__":
+    main()

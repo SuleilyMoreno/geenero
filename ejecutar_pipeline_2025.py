@@ -1,35 +1,23 @@
 #!/usr/bin/env python3
-"""Ejecuta el pipeline 2025: APIs externas + GEIH DANE local.
+"""Ejecuta el pipeline 2025 del estudio (filtros: ruralidad + año 2025).
 
-Las fuentes externas nunca se buscan en carpetas locales: se descargan desde
-los endpoints suministrados por variables de entorno. GEIH se lee desde
-GEIH_2025/ y se decodifica con el diccionario oficial.
+  1. Microdatos locales DANE/DNP -> plata/   (GEIH, ENUT, FIES, TerriData)
+  2. Crédito rural por API (Finagro jjvv-55ck, Superfinanciera w9zh-vetq)
+  3. Indicadores agregados -> datos_tablero/*.json
+  4. Tableros HTML -> index.html + 4 tableros
 
-Variables requeridas:
-  SUPER_DATASET_ID, SUPER_ANIO_FIELD, SUPER_CIIU_FIELD
-  FINAGRO_DATASET_ID, FINAGRO_YEAR_COLUMN
-  TERRIDATA_URL, IGAC_URL, DIVIPOLA_CSV
+Uso:
+  python ejecutar_pipeline_2025.py                 # todo (requiere microdatos)
+  python ejecutar_pipeline_2025.py --sin-microdatos   # solo crédito por API + HTML
 """
-
 from __future__ import annotations
 
-import os
+import argparse
 import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
-BRONCE = ROOT / "bronce"
-PLATA = ROOT / "plata"
-ORO = ROOT / "oro"
-
-
-def requerido(nombre: str) -> str:
-    valor = os.getenv(nombre)
-    if not valor:
-        raise SystemExit(f"Falta la variable de entorno requerida: {nombre}")
-    return valor
 
 
 def ejecutar(*args: str) -> None:
@@ -38,45 +26,28 @@ def ejecutar(*args: str) -> None:
 
 
 def main() -> None:
-    BRONCE.mkdir(exist_ok=True)
-    PLATA.mkdir(exist_ok=True)
-    ORO.mkdir(exist_ok=True)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--sin-microdatos", action="store_true",
+                    help="No recalcula GEIH/ENUT/FIES/TerriData; usa los JSON existentes en datos_tablero/")
+    args = ap.parse_args()
 
-    # 1. GEIH: fuente local oficial, por mes y módulo. No se concatena
-    # indiscriminadamente: el decodificador conserva cada esquema.
-    ejecutar(
-        "decodificar_geih_2025.py",
-        "--datos", str(ROOT / "GEIH_2025"),
-        "--diccionario", str(ROOT / "Diccionario_de_datos_GEIH_2025.xlsx"),
-        "--salida", str(PLATA / "geih_2025_decodificada"),
-    )
+    if not args.sin_microdatos:
+        (ROOT / "plata").mkdir(exist_ok=True)
+        ejecutar("decodificar_geih_2025.py", "--datos", "GEIH_2025",
+                 "--diccionario", "Diccionario_de_datos_GEIH_2025.xlsx", "--salida", "plata/geih_2025_decodificada")
+        ejecutar("procesar_enut_2024_2025.py")
+        ejecutar("procesar_fies_2025.py")
+        ejecutar("procesar_terridata.py")
 
-    # 2. Fuentes externas: siempre API/URL, nunca archivos locales de entrada.
-    ejecutar(
-        "extraer_superfinanciera_2025.py",
-        "--dataset-id", requerido("SUPER_DATASET_ID"),
-        "--anio-field", requerido("SUPER_ANIO_FIELD"),
-        "--ciiu-field", requerido("SUPER_CIIU_FIELD"),
-        "--output-dir", str(BRONCE / "superfinanciera_2025"),
-    )
-    ejecutar(
-        "descargar_finagro_2025.py",
-        "--dataset-id", requerido("FINAGRO_DATASET_ID"),
-        "--year-column", requerido("FINAGRO_YEAR_COLUMN"),
-    )
-    ejecutar(
-        "extraer_entorno_territorial_2025.py",
-        "--divipola-csv", requerido("DIVIPOLA_CSV"),
-        "--terridata-url", requerido("TERRIDATA_URL"),
-        "--igac-url", requerido("IGAC_URL"),
-        "--output", str(BRONCE / "entorno_territorial_2025.parquet"),
-    )
+    ejecutar("extraer_credito_rural_2025.py")
 
-    # 3. El resto de fuentes externas (ENUT/RIF) debe colocarse mediante sus
-    # respectivos descargadores API antes de ejecutar los limpiadores Plata.
-    ejecutar("limpiar_financieros_2025.py")
-    ejecutar("limpiar_contexto_2025.py")
-    ejecutar("construir_capa_oro_2025.py", "--plata", str(PLATA), "--oro", str(ORO))
+    if not args.sin_microdatos:
+        ejecutar("agrupar_genero_2025.py")
+        ejecutar("generar_tablero_calidad_vida_2025.py")
+        ejecutar("agrupar_departamento_2025.py")
+        ejecutar("generar_tablero_financiero_nacional_2025.py")
+
+    ejecutar("construir_tableros.py")
 
 
 if __name__ == "__main__":
