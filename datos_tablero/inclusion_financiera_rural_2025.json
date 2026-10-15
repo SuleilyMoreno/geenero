@@ -1,0 +1,142 @@
+{
+ "origen": "Ejecución previa del pipeline con microdatos (resultados porcentuales válidos migrados desde los tableros anteriores).",
+ "pendientes": [
+  "Productos financieros: los hogares expandidos sumaban FEX_C18 de todos los meses (≈10 veces la población); el % por producto se recalcula al re-ejecutar.",
+  "Nivel educativo: la versión anterior asignaba mal los códigos P3042 (p. ej. 7 = Normalista se mostraba como Universitario). Aquí se muestran con su etiqueta oficial y se omiten Preescolar y Normalista por tener muestras muy pequeñas; al re-ejecutar se agrupan en 7 niveles y se excluyen las celdas con menos de 30 hogares."
+ ],
+ "productos_pct": null,
+ "inclusion_por_educacion": [
+  {
+   "nivel": "Ninguno (1)",
+   "sexo": "Hombres",
+   "pct": 13.1
+  },
+  {
+   "nivel": "Ninguno (1)",
+   "sexo": "Mujeres",
+   "pct": 9.8
+  },
+  {
+   "nivel": "Básica primaria (3)",
+   "sexo": "Hombres",
+   "pct": 27.0
+  },
+  {
+   "nivel": "Básica primaria (3)",
+   "sexo": "Mujeres",
+   "pct": 20.8
+  },
+  {
+   "nivel": "Básica secundaria (4)",
+   "sexo": "Hombres",
+   "pct": 29.2
+  },
+  {
+   "nivel": "Básica secundaria (4)",
+   "sexo": "Mujeres",
+   "pct": 22.2
+  },
+  {
+   "nivel": "Media académica (5)",
+   "sexo": "Hombres",
+   "pct": 41.1
+  },
+  {
+   "nivel": "Media académica (5)",
+   "sexo": "Mujeres",
+   "pct": 30.9
+  },
+  {
+   "nivel": "Media técnica (6)",
+   "sexo": "Hombres",
+   "pct": 41.1
+  },
+  {
+   "nivel": "Media técnica (6)",
+   "sexo": "Mujeres",
+   "pct": 38.8
+  },
+  {
+   "nivel": "Técnica profesional (8)",
+   "sexo": "Hombres",
+   "pct": 60.5
+  },
+  {
+   "nivel": "Técnica profesional (8)",
+   "sexo": "Mujeres",
+   "pct": 54.3
+  },
+  {
+   "nivel": "Tecnológica, universitaria, posgrado o sin información (9–99)",
+   "sexo": "Hombres",
+   "pct": 80.4
+  },
+  {
+   "nivel": "Tecnológica, universitaria, posgrado o sin información (9–99)",
+   "sexo": "Mujeres",
+   "pct": 74.1
+  }
+ ],
+ "inclusion_por_tamano": [
+  {
+   "tamano": "1",
+   "sexo": "Hombres",
+   "pct": 26.0
+  },
+  {
+   "tamano": "2",
+   "sexo": "Hombres",
+   "pct": 30.9
+  },
+  {
+   "tamano": "3",
+   "sexo": "Hombres",
+   "pct": 34.0
+  },
+  {
+   "tamano": "4",
+   "sexo": "Hombres",
+   "pct": 34.7
+  },
+  {
+   "tamano": "5",
+   "sexo": "Hombres",
+   "pct": 31.6
+  },
+  {
+   "tamano": "6 o más personas",
+   "sexo": "Hombres",
+   "pct": 29.5
+  },
+  {
+   "tamano": "1",
+   "sexo": "Mujeres",
+   "pct": 21.4
+  },
+  {
+   "tamano": "2",
+   "sexo": "Mujeres",
+   "pct": 26.4
+  },
+  {
+   "tamano": "3",
+   "sexo": "Mujeres",
+   "pct": 27.5
+  },
+  {
+   "tamano": "4",
+   "sexo": "Mujeres",
+   "pct": 27.7
+  },
+  {
+   "tamano": "5",
+   "sexo": "Mujeres",
+   "pct": 29.2
+  },
+  {
+   "tamano": "6 o más personas",
+   "sexo": "Mujeres",
+   "pct": 23.7
+  }
+ ]
+}

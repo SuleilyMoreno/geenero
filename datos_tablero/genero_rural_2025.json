@@ -1,0 +1,88 @@
+{
+ "origen": "Ejecución previa del pipeline con microdatos (resultados porcentuales válidos migrados desde los tableros anteriores).",
+ "pendientes": [
+  "La participación de las mujeres se calculó sobre la fuerza de trabajo (FT=1); al re-ejecutar se calcula sobre las personas ocupadas.",
+  "Personas por hogar según jefatura: promedio simple de hogares; al re-ejecutar se pondera con FEX_C18.",
+  "Labores del hogar: % estimado con el total expandido de personas del módulo Fuerza de trabajo como denominador; al re-ejecutar se usa el del propio módulo."
+ ],
+ "jefatura_personas_promedio": {
+  "Mujeres": 2.8503842628498908,
+  "Hombres": 2.7963853855155376
+ },
+ "tiempo_enut_horas_dia": {
+  "Mujeres": {
+   "actividades_extra": 2.786251978891793,
+   "cuidado": 0.15416270888302533
+  },
+  "Hombres": {
+   "actividades_extra": 0.7430770898369715,
+   "cuidado": 0.06846383975026012
+  }
+ },
+ "participacion_mujeres": {
+  "valor": 31.625735983567573,
+  "universo": "fuerza de trabajo"
+ },
+ "agro_pct": {
+  "Mujeres": 17.260273947925448,
+  "Hombres": 82.73972605207454
+ },
+ "actividades": {
+  "etiquetas": [
+   "Preparar alimentos",
+   "Lavar y planchar ropa",
+   "Limpiar la vivienda",
+   "Cuidar niñas y niños",
+   "Cuidar personas enfermas",
+   "Ayudar con tareas",
+   "Traer agua",
+   "Actividades agropecuarias del hogar"
+  ],
+  "Mujeres": [
+   92.8995809001519,
+   90.89880711809018,
+   91.85895982298507,
+   19.7187383544494,
+   4.264626739686179,
+   12.600753664211124,
+   5.1563254857392735,
+   8.448313733815196
+  ],
+  "Hombres": [
+   39.765854655662864,
+   34.998363290769326,
+   50.576537191314124,
+   6.74634206370532,
+   1.4651480107386605,
+   2.8867262976463337,
+   8.428403854575244,
+   14.299217671380653
+  ]
+ },
+ "actividad_principal": {
+  "etiquetas": [
+   "Trabajando",
+   "Buscando trabajo",
+   "Estudiando",
+   "Oficios del hogar",
+   "Incapacidad permanente para trabajar",
+   "Otra actividad"
+  ],
+  "Mujeres": [
+   20.84337223448293,
+   1.3634025325042527,
+   7.917084697923174,
+   64.85388223367326,
+   1.4403385149467485,
+   3.581919786469642
+  ],
+  "Hombres": [
+   71.05649103090822,
+   3.1182266480012575,
+   8.04855054845193,
+   6.975556161832382,
+   2.490751046958212,
+   8.310424563847992
+  ]
+ }
+}

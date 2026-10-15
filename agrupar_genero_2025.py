@@ -1,85 +1,117 @@
 #!/usr/bin/env python3
-"""Agrega GEIH rural, ENUT decodificada y Finagro para el tablero de género."""
-from pathlib import Path
-import json
-import re
+"""Indicadores del tablero de género rural 2025 (GEIH 2025 + ENUT 2024-2025).
+
+Filtros: GEIH 2025 y ENUT con CLASE 2/3 (centros poblados y rural disperso).
+Las uniones hogar-persona usan mes_archivo + DIRECTORIO + HOGAR + ORDEN y los
+totales se expanden con FEX_C18 / meses. Los indicadores se publican como
+porcentajes o promedios, no como conteos absolutos.
+
+Salida: datos_tablero/genero_rural_2025.json (lo dibuja construir_tableros.py).
+"""
+from __future__ import annotations
+
 import duckdb
-from dashboard_config import apply_common_style
 
-BASE = Path(__file__).resolve().parent
-PLATA, ORO = BASE/'plata', BASE/'oro'
-GEIH = str(PLATA/'geih_2025_decodificada/*.parquet')
-ENUT = str(PLATA/'enut_2025_limpia.parquet')
-FIN = str(PLATA/'finagro_2025_limpia.parquet')
-OUT, HTML = ORO/'tablero_genero_2025.parquet', BASE/'genero_dashboard.html'
+from tablero_comun import FUERZA, OCUPADOS, OTRAS_FORMAS, PERSONAS, PLATA, geih, guardar_json, meses_geih, peso
 
-def main():
-    ORO.mkdir(exist_ok=True); c=duckdb.connect()
-    person=f"""SELECT CAST(g.DIRECTORIO AS VARCHAR) d,CAST(g.HOGAR AS VARCHAR) h,CAST(g.ORDEN AS VARCHAR) p,
-      TRY_CAST(cual_fue_su_sexo_al_nacer AS INTEGER) sexo,TRY_CAST(cual_es_el_parentesco_de_con_el AS INTEGER) parentesco,
-      TRY_CAST(f.indicador_de_fuerza_de_trabajo AS INTEGER) fuerza,COALESCE(TRY_CAST(g.FEX_C18 AS DOUBLE),TRY_CAST(f.FEX_C18 AS DOUBLE),1) peso_persona
-      FROM read_parquet('{PLATA}/geih_2025_decodificada/*__caracteristicas_generales_seguridad_social_en_salud_y_educacion.parquet') g
-      LEFT JOIN read_parquet('{PLATA}/geih_2025_decodificada/*__fuerza_de_trabajo.parquet') f USING(DIRECTORIO,ORDEN,HOGAR)
-      WHERE CAST(g.CLASE AS VARCHAR) IN ('2','3')"""
-    j=c.execute(f"SELECT AVG(CASE WHEN jefe_mujer=1 THEN personas ELSE NULL END) mujeres,AVG(CASE WHEN jefe_hombre=1 AND jefe_mujer=0 THEN personas ELSE NULL END) hombres FROM (SELECT d,h,COUNT(DISTINCT p) personas,MAX(CASE WHEN parentesco=1 AND sexo=1 THEN 1 ELSE 0 END) jefe_hombre,MAX(CASE WHEN parentesco=1 AND sexo=2 THEN 1 ELSE 0 END) jefe_mujer FROM ({person}) GROUP BY 1,2)").fetchone()
-    # Participación femenina dentro del total de personas ocupadas rurales.
-    participacion_femenina=c.execute(f"SELECT 100.0*SUM(CASE WHEN sexo=2 THEN peso_persona ELSE 0 END)/NULLIF(SUM(CASE WHEN fuerza=1 THEN peso_persona ELSE 0 END),0) FROM ({person}) WHERE fuerza=1").fetchone()[0]
-    enut_cols=[x[0] for x in c.execute(f"DESCRIBE SELECT * FROM read_parquet('{ENUT}')").fetchall()]
-    def time_sum(prefix):
-        pairs=[]
-        for col in enut_cols:
-            if col.startswith(prefix) and col.endswith('A1'): pairs.append((col,col[:-2]+'A2'))
-        return '+'.join(f"COALESCE(TRY_CAST({a} AS DOUBLE),0)+COALESCE(TRY_CAST({b} AS DOUBLE),0)/60" for a,b in pairs) or '0'
-    extra=time_sum('P1136')+'+'+time_sum('P1143')+'+'+time_sum('P1140')
-    care=time_sum('P1137')
-    et={str(x[0]):[x[1],x[2]] for x in c.execute(f"SELECT TRY_CAST(P6020 AS INTEGER),SUM(({extra})*COALESCE(TRY_CAST(FEX_C AS DOUBLE),1))/NULLIF(SUM(COALESCE(TRY_CAST(FEX_C AS DOUBLE),1)),0),SUM(({care})*COALESCE(TRY_CAST(FEX_C AS DOUBLE),1))/NULLIF(SUM(COALESCE(TRY_CAST(FEX_C AS DOUBLE),1)),0) FROM read_parquet('{ENUT}') WHERE CAST(CLASE AS VARCHAR) IN ('2','3') GROUP BY 1").fetchall()}
-    cr={str(x[0]):[x[1],x[2]] for x in c.execute(f"SELECT CASE WHEN upper(CAST(Sexo AS VARCHAR)) IN ('F','2') THEN 2 WHEN upper(CAST(Sexo AS VARCHAR)) IN ('M','1') THEN 1 END,COUNT(*),MEDIAN(TRY_CAST(monto AS DOUBLE)) FROM read_parquet('{FIN}') GROUP BY 1").fetchall()}
-    agro={str(x[0]):x[1] for x in c.execute(f"SELECT p.sexo,SUM(p.peso_persona) FROM ({person}) p JOIN read_parquet('{PLATA}/geih_2025_decodificada/*__ocupados.parquet') x ON CAST(x.DIRECTORIO AS VARCHAR)=p.d AND CAST(x.HOGAR AS VARCHAR)=p.h AND CAST(x.ORDEN AS VARCHAR)=p.p WHERE TRY_CAST(x.rama_de_actividad_empleo_principal AS VARCHAR) LIKE '01%' GROUP BY p.sexo").fetchall()}
-    sex_join=f"read_parquet('{PLATA}/geih_2025_decodificada/*__caracteristicas_generales_seguridad_social_en_salud_y_educacion.parquet')"
-    principal_labels={1:'Trabajando',2:'Buscando trabajo',3:'Estudiando',4:'Oficios del hogar',5:'Incapacidad permanente para trabajar',6:'Otra actividad'}
-    principal={}
-    for sex in (1,2):
-        principal[str(sex)]={str(code):val for code,val in c.execute(f"SELECT TRY_CAST(x.en_que_actividad_ocupo_la_mayor_parte AS INTEGER),SUM(COALESCE(TRY_CAST(x.FEX_C18 AS DOUBLE),1)) FROM read_parquet('{PLATA}/geih_2025_decodificada/*__fuerza_de_trabajo.parquet') x JOIN {sex_join} g USING(DIRECTORIO,ORDEN,HOGAR) WHERE CAST(x.CLASE AS VARCHAR) IN ('2','3') AND TRY_CAST(g.cual_fue_su_sexo_al_nacer AS INTEGER)={sex} AND TRY_CAST(x.en_que_actividad_ocupo_la_mayor_parte AS INTEGER) BETWEEN 1 AND 6 GROUP BY 1").fetchall()}
-    rows=[{'sexo':'Mujeres','participacion_ocupadas':participacion_femenina}]
-    # Actividades extra al trabajo principal: GEIH, módulo Otras formas de trabajo.
-    other=f"{PLATA}/geih_2025_decodificada/*__otras_formas_de_trabajo.parquet"
-    sex_join=f"read_parquet('{PLATA}/geih_2025_decodificada/*__caracteristicas_generales_seguridad_social_en_salud_y_educacion.parquet')"
-    activities=[('Preparar alimentos','cocinar_lavar_los_platos_poner_la_mesa'),('Lavar y planchar ropa','lavar_colgar_planchar_la_ropa_reparar_ropa'),('Limpiar la vivienda','limpiar_o_arreglar_la_casa_tender_las'),('Cuidar niñas y niños','cuidar_ninas_o_ninos_menores_de_5'),('Cuidar personas enfermas','cuidar_personas_enfermas_en_condicion_de_discapacidad'),('Ayudar con tareas','ayudar_a_personas_con_tareas_o_trabajos'),('Traer agua','traer_agua_para_el_uso_de_este'),('Actividades agropecuarias del hogar','plantar_regar_abonar_deshierbar_o_cosechar_en')]
-    ah={1:[],2:[]}
-    for label,col in activities:
-        for sex in (1,2):
-            val=c.execute(f"SELECT COALESCE(SUM(CASE WHEN TRY_CAST(o.\"{col}\" AS INTEGER)=1 THEN COALESCE(TRY_CAST(o.FEX_C18 AS DOUBLE),1) ELSE 0 END),0) FROM read_parquet('{other}') o JOIN {sex_join} g USING(DIRECTORIO,ORDEN,HOGAR) WHERE CAST(o.CLASE AS VARCHAR) IN ('2','3') AND TRY_CAST(g.cual_fue_su_sexo_al_nacer AS INTEGER)={sex}").fetchone()[0]
-            ah[sex].append(val)
-    data={'jefatura':{'mujeres':j[0] or 0,'hombres':j[1] or 0},'tiempo':et,'credito':cr,'agro':agro,'sexo':rows,'actividades':[x[0] for x in activities], 'actividad_hombres':ah[1], 'actividad_mujeres':ah[2], 'actividad_pesada_con': 'FEX_C18','principal':principal,'principal_labels':principal_labels}
-    c.execute("CREATE OR REPLACE TABLE resultado AS SELECT * FROM read_parquet(?)",[FIN]); c.execute("COPY resultado TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",[str(OUT)]); c.close()
-    html=render(json.dumps(data,ensure_ascii=False,default=lambda x:None))
-    html=html.replace('Personas en actividades agropecuarias', 'Participación porcentual en actividades agropecuarias por sexo')
-    html=html.replace("Plotly.newPlot('agro',[{labels:['Hombres','Mujeres'],values:[D.agro['1']||0,D.agro['2']||0],type:'pie',hole:.45,textinfo:'label+percent'}],{...B,title:'Participación porcentual en actividades agropecuarias por sexo'});", "let agroTotal=(D.agro['1']||0)+(D.agro['2']||0),agroPct=[agroTotal?100*(D.agro['1']||0)/agroTotal:0,agroTotal?100*(D.agro['2']||0)/agroTotal:0];Plotly.newPlot('agro',[{labels:['Hombres','Mujeres'],values:agroPct,type:'pie',hole:.55,texttemplate:'%{label}<br>%{value:.1f}%',textinfo:'label+text',customdata:[D.agro['1']||0,D.agro['2']||0],hovertemplate:'%{label}: %{value:.1f}%<br>Personas estimadas: %{customdata:,.0f}<extra></extra>',marker:{colors:['#60a5fa','#f472b6']}}],{...B,title:{text:'Participación porcentual en actividades agropecuarias por sexo<br><sup>Los porcentajes se calculan sobre el total agropecuario estimado</sup>'}});")
-    html=html.replace('GEIH: ramas de actividad que comienzan por 01.', 'GEIH rural: ramas de actividad que comienzan por 01, ponderadas con FEX_C18.')
-    html=html.replace("title:'Personas en actividades agropecuarias'", "title:{text:'Participación en actividades agropecuarias por sexo<br><sup>Porcentaje de mujeres frente a hombres</sup>'}")
-    html=html.replace('Personas en hogares según jefatura', 'Personas promedio por hogar según jefatura')
-    html=html.replace('Desocupación femenina', 'Mujeres dentro del total de personas ocupadas')
-    html=html.replace('Personas en hogares según jefatura', 'Personas promedio por hogar según jefatura')
-    html=html.replace('Personas estimadas según sexo de la jefatura del hogar.', 'Promedio ponderado de personas por hogar según sexo de la jefatura.')
-    html=html.replace("des.textContent=f((D.sexo[1]||{}).desocupacion)+'%';", "des.textContent=f((D.sexo[0]||{}).participacion_ocupadas)+'%';")
-    html=html.replace('GEIH: desocupadas / (ocupadas + desocupadas) × 100.', 'GEIH rural: mujeres ocupadas / total de personas ocupadas × 100, ponderado con FEX_C18.')
-    html=html.replace("<article class='card kpi'><div>Personas: hogares con jefatura femenina frente a masculina</div><div class='value' id='jefatura'>N/D</div><div class='source'>GEIH rural. Diferencia entre ambos grupos.</div></article>", "<article class='card kpi'><div>Personas en hogares según jefatura</div><div style='display:flex;gap:18px'><div><small>Mujeres</small><div class='value' id='jefatura_mujeres'>N/D</div></div><div><small>Hombres</small><div class='value' id='jefatura_hombres'>N/D</div></div></div><div class='source'>GEIH rural. Personas estimadas según sexo de la jefatura del hogar.</div></article>")
-    html=html.replace('Personas en hogares según jefatura', 'Personas promedio por hogar según jefatura')
-    html=html.replace("<article class='card kpi'><div>Tiempo promedio mujeres</div><div class='value' id='tm'>N/D</div><div class='source'>ENUT 2024-2025 decodificada.</div></article><article class='card kpi'><div>Tiempo promedio hombres</div><div class='value' id='th'>N/D</div><div class='source'>ENUT 2024-2025 decodificada.</div></article>", "<article class='card kpi'><div>Tiempo promedio en actividades extra</div><div style='display:flex;gap:18px'><div><small>Mujeres</small><div class='value' id='tm'>N/D</div></div><div><small>Hombres</small><div class='value' id='th'>N/D</div></div></div><div class='source'>ENUT 2024-2025. Horas promedio ponderadas por sexo.</div></article>")
-    html=html.replace("jefatura.textContent=f(D.jefatura.mujeres-D.jefatura.hombres);", "jefatura_mujeres.textContent=f(D.jefatura.mujeres);jefatura_hombres.textContent=f(D.jefatura.hombres);")
-    html=html.replace("<article class='card'><div id='credito'>", "<article class='card wide'><div id='principal'></div><div class='source'>Fuente: GEIH rural, variable P6240. Actividad que ocupó la mayor parte del tiempo la semana pasada. Valores expandidos con FEX_C18.</div></article><article class='card'><div id='credito'>")
-    pie_js="let pie=(id,vals,color,titulo)=>{let total=vals.reduce((a,b)=>a+(Number(b)||0),0),por=vals.map(v=>total?100*(Number(v)||0)/total:0);Plotly.newPlot(id,[{labels:D.actividades,values:por,type:'pie',hole:.38,marker:{colors:color},hovertemplate:'%{label}: %{percent}<br>Personas estimadas: %{customdata:,.0f}<extra></extra>',customdata:vals,textinfo:'label+percent'}],{...B,title:{text:titulo+'<br><sup>Distribución porcentual dentro del grupo</sup>'},showlegend:true});};pie('labores_mujeres',D.actividad_mujeres,['#f472b6','#fb7185','#f9a8d4','#ec4899','#be185d','#fda4af','#db2777','#f43f5e'],'Actividades extra realizadas por mujeres');pie('labores_hombres',D.actividad_hombres,['#60a5fa','#38bdf8','#93c5fd','#2563eb','#1d4ed8','#7dd3fc','#0284c7','#0ea5e9'],'Actividades extra realizadas por hombres');"
-    html=re.sub(r"Plotly\.newPlot\('labores'.*?\);let h=", pie_js+'let h=', html, count=1)
-    html=html.replace("<div id='labores'></div>", "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px'><div id='labores_mujeres'></div><div id='labores_hombres'></div></div>")
-    html=html.replace("Plotly.newPlot('labores',[{x:D.actividades,y:D.actividad_mujeres,name:'Mujeres',type:'bar',marker:{color:'#f472b6'}},{x:D.actividades,y:D.actividad_hombres,name:'Hombres',type:'bar',marker:{color:'#60a5fa'}}],{...B,showlegend:true,title:{text:'Actividades extra al trabajo principal<br><sup>La ENUT identifica las labores no remuneradas</sup>'},barmode:'group',yaxis:{title:'Personas estimadas (factor FEX_C18)'}});", "let pie=(id,vals,color,titulo)=>{let total=vals.reduce((a,b)=>a+(Number(b)||0),0),por=vals.map(v=>total?100*(Number(v)||0)/total:0);Plotly.newPlot(id,[{labels:D.actividades,values:por,type:'pie',hole:.38,marker:{colors:color},hovertemplate:'%{label}: %{percent}<br>Personas estimadas: %{customdata:,.0f}<extra></extra>',customdata:vals,textinfo:'label+percent'}],{...B,title:{text:titulo+'<br><sup>Distribución porcentual dentro del grupo</sup>'},showlegend:true});};pie('labores_mujeres',D.actividad_mujeres,['#f472b6','#fb7185','#f9a8d4','#ec4899','#be185d','#fda4af','#db2777','#f43f5e'],'Actividades extra realizadas por mujeres');pie('labores_hombres',D.actividad_hombres,['#60a5fa','#38bdf8','#93c5fd','#2563eb','#1d4ed8','#7dd3fc','#0284c7','#0ea5e9'],'Actividades extra realizadas por hombres');")
-    html=html.replace("yaxis:{title:'Personas'}", "yaxis:{title:'Personas estimadas (factor FEX_C18)'}")
-    principal_js="let pc=(sexo,color,nombre)=>{let keys=Object.keys(D.principal[sexo]||{}),vals=keys.map(k=>D.principal[sexo][k]),labs=keys.map(k=>D.principal_labels[k]||k);return {x:labs,y:vals,name:nombre,type:'bar',marker:{color},text:vals.map(f),textposition:'auto'};};Plotly.newPlot('principal',[pc('1','#60a5fa','Hombres'),pc('2','#f472b6','Mujeres')],{...B,title:{text:'Actividad principal de hombres y mujeres<br><sup>La categoría indica en qué actividad ocupó cada persona la mayor parte del tiempo</sup>'},barmode:'group',yaxis:{title:'Personas estimadas (FEX_C18)'},xaxis:{title:'Actividad principal',tickangle:-25}});"
-    html=html.replace("let h=D.credito['1']", principal_js+"let h=D.credito['1']", 1)
-    html=html.replace('ENUT: labores no remuneradas extra al trabajo principal.', 'GEIH rural, módulo Otras formas de trabajo. Valores expandidos mediante FEX_C18.')
-    HTML.write_text(apply_common_style(html),encoding='utf-8')
-    print(f'OK: {OUT}'); print(f'OK: {HTML}')
+ENUT = PLATA / "enut_2024_2025_limpia.parquet"
+SEXO = {1: "Hombres", 2: "Mujeres"}
+ACTIVIDADES = [
+    ("Preparar alimentos", "cocinar_lavar_los_platos_poner_la_mesa"),
+    ("Lavar y planchar ropa", "lavar_colgar_planchar_la_ropa_reparar_ropa"),
+    ("Limpiar la vivienda", "limpiar_o_arreglar_la_casa_tender_las"),
+    ("Cuidar niñas y niños", "cuidar_ninas_o_ninos_menores_de_5"),
+    ("Cuidar personas enfermas", "cuidar_personas_enfermas_en_condicion_de_discapacidad"),
+    ("Ayudar con tareas", "ayudar_a_personas_con_tareas_o_trabajos"),
+    ("Traer agua", "traer_agua_para_el_uso_de_este"),
+    ("Actividades agropecuarias del hogar", "plantar_regar_abonar_deshierbar_o_cosechar_en"),
+]
+PRINCIPAL = ["Trabajando", "Buscando trabajo", "Estudiando", "Oficios del hogar",
+             "Incapacidad permanente para trabajar", "Otra actividad"]
+LLAVE = "mes_archivo, DIRECTORIO, HOGAR, ORDEN"
 
-def render(data):
- return """<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Brechas de género rural 2025</title><script src='https://cdn.plot.ly/plotly-2.35.2.min.js'></script><style>body{margin:0;background:#101827;color:#f5f7ff;font:15px system-ui}main{max-width:1300px;margin:auto;padding:30px}.hero h1{font-size:clamp(35px,6vw,70px);background:linear-gradient(90deg,#fff,#f472b6,#60a5fa);color:transparent;background-clip:text}.hero p,.source{color:#b8c4d8}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{grid-column:span 6;background:#18243b;border:1px solid #ffffff20;border-radius:20px;padding:20px;min-height:300px}.wide{grid-column:span 12}.kpi{grid-column:span 3;min-height:150px}.value{font-size:34px;font-weight:800;color:#f472b6;margin:15px 0}.source{font-size:12px;margin-top:10px}@media(max-width:850px){.card,.wide,.kpi{grid-column:span 12}}</style></head><body><main><section class='hero'><div>GEIH · ENUT · FINAGRO · RURAL</div><h1>La brecha también se mide en tiempo y oportunidades</h1><p>Comparación entre mujeres y hombres en centros poblados y rural disperso.</p></section><section class='grid'><article class='card kpi'><div>Personas: hogares con jefatura femenina frente a masculina</div><div class='value' id='jefatura'>N/D</div><div class='source'>GEIH rural. Diferencia entre ambos grupos.</div></article><article class='card kpi'><div>Tiempo promedio mujeres</div><div class='value' id='tm'>N/D</div><div class='source'>ENUT 2024-2025 decodificada.</div></article><article class='card kpi'><div>Tiempo promedio hombres</div><div class='value' id='th'>N/D</div><div class='source'>ENUT 2024-2025 decodificada.</div></article><article class='card kpi'><div>Desocupación femenina</div><div class='value' id='des'>N/D</div><div class='source'>GEIH: desocupadas / (ocupadas + desocupadas) × 100.</div></article><article class='card wide'><div id='labores'></div><div class='source'>ENUT: labores no remuneradas extra al trabajo principal.</div></article><article class='card'><div id='credito'></div><div class='source'>Finagro 2025. Conteo por sexo.</div></article><article class='card'><div id='agro'></div><div class='source'>GEIH: ramas de actividad que comienzan por 01.</div></article></section></main><script>const D=__DATA__,f=x=>x==null?'N/D':Number(x).toLocaleString('es-CO',{maximumFractionDigits:1}),B={autosize:true,paper_bgcolor:'#18243b',plot_bgcolor:'#18243b',font:{color:'#f5f7ff'},margin:{l:20,r:20,t:55,b:20},showlegend:true};jefatura.textContent=f(D.jefatura.mujeres-D.jefatura.hombres);tm.textContent=f((D.tiempo['2']||[null])[0])+' h';th.textContent=f((D.tiempo['1']||[null])[0])+' h';des.textContent=f((D.sexo[1]||{}).desocupacion)+'%';Plotly.newPlot('labores',[{x:D.actividades,y:D.actividad_mujeres,name:'Mujeres',type:'bar',marker:{color:'#f472b6'}},{x:D.actividades,y:D.actividad_hombres,name:'Hombres',type:'bar',marker:{color:'#60a5fa'}}],{...B,title:{text:'Actividades extra al trabajo principal<br><sup>La ENUT identifica las labores no remuneradas</sup>'},barmode:'group',yaxis:{title:'Personas'}});let h=D.credito['1']||[0],m=D.credito['2']||[0];Plotly.newPlot('credito',[{x:['Hombres','Mujeres'],y:[h[0]||0,m[0]||0],type:'bar',marker:{color:['#60a5fa','#f472b6']},text:[h[0]||0,m[0]||0].map(f),textposition:'auto'}],{...B,title:'Créditos aprobados por sexo',yaxis:{title:'Número de créditos'}});Plotly.newPlot('agro',[{labels:['Hombres','Mujeres'],values:[D.agro['1']||0,D.agro['2']||0],type:'pie',hole:.45,textinfo:'label+percent'}],{...B,title:'Personas en actividades agropecuarias'});</script></body></html>""".replace('__DATA__',data)
 
-if __name__=='__main__': main()
+def por_sexo(con, sql: str) -> dict:
+    """Ejecuta una consulta que devuelve (sexo, valor) y la indexa por etiqueta."""
+    return {SEXO[s]: v for s, v in con.execute(sql).fetchall() if s in SEXO}
+
+
+def main() -> None:
+    con = duckdb.connect()
+    n = meses_geih(con)
+    personas = f"""SELECT mes_archivo, DIRECTORIO, HOGAR, ORDEN,
+        TRY_CAST(cual_fue_su_sexo_al_nacer AS INTEGER) sexo,
+        TRY_CAST(cual_es_el_parentesco_de_con_el AS INTEGER) parentesco,
+        {peso('g', n)} w FROM {geih(PERSONAS)} g"""
+
+    # Personas por hogar según el sexo de quien ejerce la jefatura (ponderado por hogar).
+    jefatura = por_sexo(con, f"""
+        WITH p AS ({personas}), hogares AS (
+          SELECT mes_archivo, DIRECTORIO, HOGAR, COUNT(DISTINCT ORDEN) personas,
+                 MAX(CASE WHEN parentesco=1 THEN sexo END) sexo_jefe,
+                 MAX(CASE WHEN parentesco=1 THEN w END) w
+          FROM p GROUP BY 1,2,3)
+        SELECT sexo_jefe, SUM(personas*w)/NULLIF(SUM(w),0) FROM hogares GROUP BY 1""")
+
+    # Ocupados: cada fila del módulo Ocupados es una persona ocupada.
+    ocupados = f"""SELECT p.sexo, p.w, CAST(o.rama_de_actividad_empleo_principal AS VARCHAR) rama
+        FROM {geih(OCUPADOS)} o JOIN ({personas}) p USING ({LLAVE})"""
+    occ = por_sexo(con, f"SELECT sexo, SUM(w) FROM ({ocupados}) GROUP BY 1")
+    agro = por_sexo(con, f"SELECT sexo, SUM(w) FROM ({ocupados}) WHERE lpad(rama,2,'0') LIKE '01%' GROUP BY 1")
+    total_occ, total_agro = sum(occ.values()), sum(agro.values())
+
+    # Actividad principal (P6240), porcentaje dentro de cada sexo.
+    principal = {s: [0.0] * 6 for s in SEXO.values()}
+    for s, cod, v in con.execute(f"""
+        SELECT p.sexo, TRY_CAST(f.en_que_actividad_ocupo_la_mayor_parte AS INTEGER) cod, SUM(p.w)
+        FROM {geih(FUERZA)} f JOIN ({personas}) p USING ({LLAVE})
+        WHERE cod BETWEEN 1 AND 6 GROUP BY 1,2""").fetchall():
+        if s in SEXO:
+            principal[SEXO[s]][cod - 1] = v
+    principal = {s: [100 * x / sum(v) if sum(v) else None for x in v] for s, v in principal.items()}
+
+    # Otras formas de trabajo: % de personas de cada sexo que realiza cada actividad.
+    columnas = ",".join(
+        f"100*SUM(CASE WHEN TRY_CAST(o.\"{c}\" AS INTEGER)=1 THEN p.w ELSE 0 END)/NULLIF(SUM(p.w),0)"
+        for _, c in ACTIVIDADES)
+    actividades = {SEXO[r[0]]: list(r[1:]) for r in con.execute(f"""
+        SELECT p.sexo, {columnas} FROM {geih(OTRAS_FORMAS)} o JOIN ({personas}) p USING ({LLAVE})
+        GROUP BY 1""").fetchall() if r[0] in SEXO}
+
+    # ENUT: horas por día (horas + minutos/60) ponderadas con FEX_C, población rural.
+    cols = [r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{ENUT}')").fetchall()]
+
+    def horas(prefijo: str) -> str:
+        pares = [(c, c[:-2] + "A2") for c in cols if c.startswith(prefijo) and c.endswith("A1")]
+        return "+".join(f"COALESCE(TRY_CAST({a} AS DOUBLE),0)+COALESCE(TRY_CAST({b} AS DOUBLE),0)/60"
+                        for a, b in pares) or "0"
+
+    extra = "+".join(horas(p) for p in ("P1136", "P1143", "P1140"))
+    tiempo = {SEXO[s]: {"actividades_extra": e, "cuidado": c} for s, e, c in con.execute(f"""
+        SELECT TRY_CAST(P6020 AS INTEGER),
+               SUM(({extra})*TRY_CAST(FEX_C AS DOUBLE))/NULLIF(SUM(TRY_CAST(FEX_C AS DOUBLE)),0),
+               SUM(({horas('P1137')})*TRY_CAST(FEX_C AS DOUBLE))/NULLIF(SUM(TRY_CAST(FEX_C AS DOUBLE)),0)
+        FROM read_parquet('{ENUT}') WHERE CAST(CLASE AS VARCHAR) IN ('2','3') GROUP BY 1""").fetchall()
+        if s in SEXO}
+    muestra = {
+        "personas": con.execute(f"SELECT COUNT(*) FROM {geih(PERSONAS)}").fetchone()[0],
+        "enut_personas": con.execute(f"SELECT COUNT(*) FROM read_parquet('{ENUT}') WHERE CAST(CLASE AS VARCHAR) IN ('2','3')").fetchone()[0],
+    }
+    con.close()
+
+    guardar_json("genero_rural_2025.json", {
+        "muestra": muestra,
+        "origen": f"GEIH 2025 ({n} meses) y ENUT 2024-2025, zona rural (CLASE 2/3).",
+        "pendientes": [],
+        "jefatura_personas_promedio": jefatura,
+        "tiempo_enut_horas_dia": tiempo,
+        "participacion_mujeres": {"valor": 100 * occ.get("Mujeres", 0) / total_occ if total_occ else None,
+                                  "universo": "ocupados"},
+        "agro_pct": {s: 100 * v / total_agro for s, v in agro.items()} if total_agro else {},
+        "actividades": {"etiquetas": [a for a, _ in ACTIVIDADES], **actividades},
+        "actividad_principal": {"etiquetas": PRINCIPAL, **principal},
+    })
+
+
+if __name__ == "__main__":
+    main()

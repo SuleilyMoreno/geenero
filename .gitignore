@@ -23,3 +23,6 @@ ENUT/
 .DS_Store
 .env
 *.log
+
+# Referencias pequeñas versionadas (filtro de ruralidad y capa geográfica)
+!referencias/*.csv
