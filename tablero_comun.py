@@ -77,6 +77,13 @@ def peso(alias: str, meses: int) -> str:
     return f"(COALESCE(TRY_CAST({alias}.FEX_C18 AS DOUBLE), 0) / {meses})"
 
 
+def previo(nombre: str) -> dict:
+    """JSON ya publicado en datos_tablero/ (para conservar indicadores de fuentes no disponibles)."""
+    import json
+    ruta = DATOS / nombre
+    return json.loads(ruta.read_text(encoding="utf-8")) if ruta.exists() else {}
+
+
 def guardar_json(nombre: str, datos: dict) -> Path:
     import json
     DATOS.mkdir(exist_ok=True)

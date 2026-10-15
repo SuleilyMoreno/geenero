@@ -1,31 +1,66 @@
 {
- "origen": "Ejecución previa del pipeline con microdatos (resultados porcentuales válidos migrados desde los tableros anteriores).",
- "pendientes": [
-  "La participación de las mujeres se calculó sobre la fuerza de trabajo (FT=1); al re-ejecutar se calcula sobre las personas ocupadas.",
-  "Personas por hogar según jefatura: promedio simple de hogares; al re-ejecutar se pondera con FEX_C18.",
-  "Labores del hogar: % estimado con el total expandido de personas del módulo Fuerza de trabajo como denominador; al re-ejecutar se usa el del propio módulo."
- ],
+ "muestra": {
+  "personas": 104948,
+  "ocupados": 43334,
+  "hogares": 37256,
+  "enut_personas": 65144
+ },
+ "origen": "GEIH 2025 (12 meses) y ENUT 2024-2025, zona rural (CLASE 2/3).",
+ "pendientes": [],
  "jefatura_personas_promedio": {
-  "Mujeres": 2.8503842628498908,
-  "Hombres": 2.7963853855155376
+  "Hombres": 2.9509129143406803,
+  "Mujeres": 3.0317901003800065
+ },
+ "jefatura_femenina_pct": 37.25127670094117,
+ "hogares_jefatura": {
+  "Hombres": 2478318.398649717,
+  "Mujeres": 1471273.3513499105
  },
  "tiempo_enut_horas_dia": {
   "Mujeres": {
-   "actividades_extra": 2.786251978891793,
-   "cuidado": 0.15416270888302533
+   "trabajo_domestico": 4.2859382021207715,
+   "cuidado": 0.7237600426988762,
+   "autoconsumo": 0.23142299645351724,
+   "poblacion": 4882169.999999877
   },
   "Hombres": {
-   "actividades_extra": 0.7430770898369715,
-   "cuidado": 0.06846383975026012
+   "trabajo_domestico": 1.4202924567533177,
+   "cuidado": 0.20717669324992366,
+   "autoconsumo": 0.3533028129332545,
+   "poblacion": 5272775.999999914
   }
  },
  "participacion_mujeres": {
-  "valor": 31.625735983567573,
-  "universo": "fuerza de trabajo"
+  "valor": 29.9089203511449,
+  "universo": "ocupados"
  },
  "agro_pct": {
-  "Mujeres": 17.260273947925448,
-  "Hombres": 82.73972605207454
+  "Mujeres": 17.260273947925437,
+  "Hombres": 82.73972605207457
+ },
+ "agro_n": {
+  "Mujeres": 430121.87455413776,
+  "Hombres": 2061854.0688858293
+ },
+ "ocupados_n": {
+  "Mujeres": 1451332.5647226362,
+  "Hombres": 3401174.8066010494
+ },
+ "ocupados_pct": {
+  "Mujeres": 29.9089203511449,
+  "Hombres": 70.09107964885509
+ },
+ "ingreso_laboral": {
+  "Mujeres": {
+   "media": 846398.7876574966,
+   "mediana": 600000.0,
+   "n": 12100
+  },
+  "Hombres": {
+   "media": 1155459.8051728576,
+   "mediana": 1000000.0,
+   "n": 28616
+  }
  },
  "actividades": {
   "etiquetas": [
@@ -39,25 +74,47 @@
    "Actividades agropecuarias del hogar"
   ],
   "Mujeres": [
-   92.8995809001519,
-   90.89880711809018,
-   91.85895982298507,
-   19.7187383544494,
-   4.264626739686179,
-   12.600753664211124,
-   5.1563254857392735,
-   8.448313733815196
+   92.89958090015195,
+   90.89880711809025,
+   91.85895982298511,
+   19.718738354449393,
+   4.264626739686175,
+   12.600753664211123,
+   5.156325485739272,
+   8.448313733815189
   ],
   "Hombres": [
-   39.765854655662864,
-   34.998363290769326,
-   50.576537191314124,
-   6.74634206370532,
-   1.4651480107386605,
-   2.8867262976463337,
+   39.76585465566282,
+   34.9983632907693,
+   50.57653719131406,
+   6.746342063705319,
+   1.4651480107386603,
+   2.886726297646333,
    8.428403854575244,
-   14.299217671380653
-  ]
+   14.299217671380651
+  ],
+  "n": {
+   "Mujeres": [
+    3852878.4326781975,
+    3769899.176164017,
+    3809720.1485830764,
+    817806.7219392394,
+    176869.34892009536,
+    522598.3966548809,
+    213851.2904296781,
+    350381.8366252965
+   ],
+   "Hombres": [
+    1775732.3430303305,
+    1562841.4424055233,
+    2258480.1374639487,
+    301255.88657407527,
+    65425.74609608434,
+    128905.89920910509,
+    376367.85262854805,
+    638527.2872661774
+   ]
+  }
  },
  "actividad_principal": {
   "etiquetas": [
@@ -68,21 +125,39 @@
    "Incapacidad permanente para trabajar",
    "Otra actividad"
   ],
-  "Mujeres": [
-   20.84337223448293,
-   1.3634025325042527,
-   7.917084697923174,
-   64.85388223367326,
-   1.4403385149467485,
-   3.581919786469642
-  ],
   "Hombres": [
-   71.05649103090822,
+   71.05649103090823,
    3.1182266480012575,
-   8.04855054845193,
-   6.975556161832382,
+   8.048550548451932,
+   6.975556161832384,
    2.490751046958212,
-   8.310424563847992
-  ]
+   8.31042456384799
+  ],
+  "Mujeres": [
+   20.843372234482935,
+   1.3634025325042523,
+   7.917084697923169,
+   64.85388223367326,
+   1.440338514946748,
+   3.581919786469641
+  ],
+  "n": {
+   "Hombres": [
+    3173006.3492514454,
+    139243.4780970154,
+    359405.6168830599,
+    311491.37355272094,
+    111223.7428522239,
+    371099.52269659383
+   ],
+   "Mujeres": [
+    864449.3179451093,
+    56545.18741252874,
+    328349.86537883146,
+    2689722.8352637556,
+    59735.998227576405,
+    148555.0457725434
+   ]
+  }
  }
 }

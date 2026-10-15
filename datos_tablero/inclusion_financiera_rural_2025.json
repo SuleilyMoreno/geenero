@@ -1,142 +1,301 @@
 {
- "origen": "Ejecución previa del pipeline con microdatos (resultados porcentuales válidos migrados desde los tableros anteriores).",
- "pendientes": [
-  "Productos financieros: los hogares expandidos sumaban FEX_C18 de todos los meses (≈10 veces la población); el % por producto se recalcula al re-ejecutar.",
-  "Nivel educativo: la versión anterior asignaba mal los códigos P3042 (p. ej. 7 = Normalista se mostraba como Universitario). Aquí se muestran con su etiqueta oficial y se omiten Preescolar y Normalista por tener muestras muy pequeñas; al re-ejecutar se agrupan en 7 niveles y se excluyen las celdas con menos de 30 hogares."
+ "origen": "GEIH 2025 (12 meses), hogares rurales (CLASE 2/3).",
+ "pendientes": [],
+ "productos_pct": [
+  {
+   "producto": "Ningún producto",
+   "pct": 47.17942788679984,
+   "hogares": 1863394.7915140716
+  },
+  {
+   "producto": "Plataforma móvil (Nequi, Daviplata…)",
+   "pct": 34.04671988249354,
+   "hogares": 1344706.4396244488
+  },
+  {
+   "producto": "Cuenta de ahorros",
+   "pct": 26.646773282271546,
+   "hogares": 1052438.7591977026
+  },
+  {
+   "producto": "Crédito de libre inversión",
+   "pct": 4.870643455496638,
+   "hogares": 192370.53209019214
+  },
+  {
+   "producto": "Tarjeta de crédito",
+   "pct": 1.3846819816943563,
+   "hogares": 54689.285312731685
+  },
+  {
+   "producto": "Crédito de vivienda",
+   "pct": 0.8097888144251784,
+   "hogares": 31983.35220695666
+  },
+  {
+   "producto": "Cuenta corriente",
+   "pct": 0.28683984559211023,
+   "hogares": 11329.002877217665
+  },
+  {
+   "producto": "Crédito de vehículo",
+   "pct": 0.17569504586180712,
+   "hogares": 6939.237036516
+  },
+  {
+   "producto": "CDT",
+   "pct": 0.14903653809388986,
+   "hogares": 5886.334813041331
+  },
+  {
+   "producto": "Otro producto",
+   "pct": 0.07459926599285716,
+   "hogares": 2946.3664552141663
+  },
+  {
+   "producto": "No sabe",
+   "pct": 0.07040840494584685,
+   "hogares": 2780.844553047499
+  }
  ],
- "productos_pct": null,
+ "inclusion_nacional": {
+  "tradicional": 29.25518120099196,
+  "con_movil": 52.75466385502373,
+  "hogares_muestra": 37256,
+  "hogares_incluidos": 1155460.2231618213,
+  "hogares_incluidos_movil": 2083593.851358054,
+  "hogares_estimados": 3949591.7499996303
+ },
+ "inclusion_hogares_por_sexo_jefatura": {
+  "Hombres": {
+   "incluidos": 771001.9113531273,
+   "incluidos_movil": 1314904.1724175129,
+   "hogares": 2478318.3986497107
+  },
+  "Mujeres": {
+   "incluidos": 384458.3118086952,
+   "incluidos_movil": 768689.6789405472,
+   "hogares": 1471273.3513499063
+  }
+ },
+ "inclusion_por_sexo_jefatura": {
+  "Hombres": 31.109881271639704,
+  "Mujeres": 26.130991325028166
+ },
+ "inclusion_movil_por_sexo_jefatura": {
+  "Hombres": 53.056305159737605,
+  "Mujeres": 52.24655759823744
+ },
  "inclusion_por_educacion": [
   {
-   "nivel": "Ninguno (1)",
+   "nivel": "1. Ninguno o preescolar",
    "sexo": "Hombres",
-   "pct": 13.1
+   "pct": 13.150913480648764,
+   "hogares_muestra": 3048,
+   "hogares_incluidos": 41133.08470314225,
+   "hogares_estimados": 312777.39575785777
   },
   {
-   "nivel": "Ninguno (1)",
+   "nivel": "1. Ninguno o preescolar",
    "sexo": "Mujeres",
-   "pct": 9.8
+   "pct": 9.787486523268742,
+   "hogares_muestra": 1943,
+   "hogares_incluidos": 19906.150124775908,
+   "hogares_estimados": 203383.67851083202
   },
   {
-   "nivel": "Básica primaria (3)",
+   "nivel": "2. Básica primaria",
    "sexo": "Hombres",
-   "pct": 27.0
+   "pct": 27.015436449431753,
+   "hogares_muestra": 11342,
+   "hogares_incluidos": 325676.8770879963,
+   "hogares_estimados": 1205521.434745677
   },
   {
-   "nivel": "Básica primaria (3)",
+   "nivel": "2. Básica primaria",
    "sexo": "Mujeres",
-   "pct": 20.8
+   "pct": 20.83249957989132,
+   "hogares_muestra": 5787,
+   "hogares_incluidos": 120486.89734240834,
+   "hogares_estimados": 578360.2533164525
   },
   {
-   "nivel": "Básica secundaria (4)",
+   "nivel": "3. Básica secundaria",
    "sexo": "Hombres",
-   "pct": 29.2
+   "pct": 29.18334826485039,
+   "hogares_muestra": 2807,
+   "hogares_incluidos": 94570.70652830291,
+   "hogares_estimados": 324057.0810108438
   },
   {
-   "nivel": "Básica secundaria (4)",
+   "nivel": "3. Básica secundaria",
    "sexo": "Mujeres",
-   "pct": 22.2
+   "pct": 22.192549084292317,
+   "hogares_muestra": 1716,
+   "hogares_incluidos": 41195.440959003834,
+   "hogares_estimados": 185627.35088490392
   },
   {
-   "nivel": "Media académica (5)",
+   "nivel": "4. Media",
    "sexo": "Hombres",
-   "pct": 41.1
+   "pct": 41.1041537805546,
+   "hogares_muestra": 4320,
+   "hogares_incluidos": 200219.8570000534,
+   "hogares_estimados": 487103.707496279
   },
   {
-   "nivel": "Media académica (5)",
+   "nivel": "4. Media",
    "sexo": "Mujeres",
-   "pct": 30.9
+   "pct": 31.325795368090287,
+   "hogares_muestra": 3337,
+   "hogares_incluidos": 116125.44725749765,
+   "hogares_estimados": 370702.31064519973
   },
   {
-   "nivel": "Media técnica (6)",
+   "nivel": "5. Normalista, técnica o tecnológica",
    "sexo": "Hombres",
-   "pct": 41.1
+   "pct": 63.51962499950227,
+   "hogares_muestra": 695,
+   "hogares_incluidos": 45844.4029170623,
+   "hogares_estimados": 72173.6044843173
   },
   {
-   "nivel": "Media técnica (6)",
+   "nivel": "5. Normalista, técnica o tecnológica",
    "sexo": "Mujeres",
-   "pct": 38.8
+   "pct": 56.811404593423,
+   "hogares_muestra": 802,
+   "hogares_incluidos": 47064.22439290248,
+   "hogares_estimados": 82842.91636463263
   },
   {
-   "nivel": "Técnica profesional (8)",
+   "nivel": "6. Universitaria",
    "sexo": "Hombres",
-   "pct": 60.5
+   "pct": 79.66935221803192,
+   "hogares_muestra": 635,
+   "hogares_incluidos": 48170.31602045025,
+   "hogares_estimados": 60462.79363314271
   },
   {
-   "nivel": "Técnica profesional (8)",
+   "nivel": "6. Universitaria",
    "sexo": "Mujeres",
-   "pct": 54.3
+   "pct": 73.71091970358793,
+   "hogares_muestra": 438,
+   "hogares_incluidos": 27675.295940063992,
+   "hogares_estimados": 37545.72056807056
   },
   {
-   "nivel": "Tecnológica, universitaria, posgrado o sin información (9–99)",
+   "nivel": "7. Posgrado",
    "sexo": "Hombres",
-   "pct": 80.4
+   "pct": 94.84838632134866,
+   "hogares_muestra": 226,
+   "hogares_incluidos": 15386.667096119498,
+   "hogares_estimados": 16222.381521588666
   },
   {
-   "nivel": "Tecnológica, universitaria, posgrado o sin información (9–99)",
+   "nivel": "7. Posgrado",
    "sexo": "Mujeres",
-   "pct": 74.1
+   "pct": 93.70652057683317,
+   "hogares_muestra": 160,
+   "hogares_incluidos": 12004.855792041833,
+   "hogares_estimados": 12811.121059818503
   }
  ],
  "inclusion_por_tamano": [
   {
    "tamano": "1",
    "sexo": "Hombres",
-   "pct": 26.0
-  },
-  {
-   "tamano": "2",
-   "sexo": "Hombres",
-   "pct": 30.9
-  },
-  {
-   "tamano": "3",
-   "sexo": "Hombres",
-   "pct": 34.0
-  },
-  {
-   "tamano": "4",
-   "sexo": "Hombres",
-   "pct": 34.7
-  },
-  {
-   "tamano": "5",
-   "sexo": "Hombres",
-   "pct": 31.6
-  },
-  {
-   "tamano": "6 o más personas",
-   "sexo": "Hombres",
-   "pct": 29.5
+   "pct": 25.986473441601806,
+   "hogares_muestra": 5270,
+   "hogares_incluidos": 147913.4543673495,
+   "hogares_estimados": 569194.0258833063
   },
   {
    "tamano": "1",
    "sexo": "Mujeres",
-   "pct": 21.4
+   "pct": 21.437281676576102,
+   "hogares_muestra": 2683,
+   "hogares_incluidos": 52710.67069800602,
+   "hogares_estimados": 245883.18376019402
+  },
+  {
+   "tamano": "2",
+   "sexo": "Hombres",
+   "pct": 30.9366982141786,
+   "hogares_muestra": 6096,
+   "hogares_incluidos": 162209.1722293638,
+   "hogares_estimados": 524326.0644893956
   },
   {
    "tamano": "2",
    "sexo": "Mujeres",
-   "pct": 26.4
+   "pct": 26.42427390360483,
+   "hogares_muestra": 4112,
+   "hogares_incluidos": 99764.50585834082,
+   "hogares_estimados": 377548.71230248193
+  },
+  {
+   "tamano": "3",
+   "sexo": "Hombres",
+   "pct": 34.02301601679084,
+   "hogares_muestra": 4915,
+   "hogares_incluidos": 177920.72680294895,
+   "hogares_estimados": 522942.25389995566
   },
   {
    "tamano": "3",
    "sexo": "Mujeres",
-   "pct": 27.5
+   "pct": 27.51678364141787,
+   "hogares_muestra": 3315,
+   "hogares_incluidos": 97484.61241447402,
+   "hogares_estimados": 354273.2816626925
+  },
+  {
+   "tamano": "4",
+   "sexo": "Hombres",
+   "pct": 34.66920899923805,
+   "hogares_muestra": 3767,
+   "hogares_incluidos": 159386.71573128353,
+   "hogares_estimados": 459735.65689020045
   },
   {
    "tamano": "4",
    "sexo": "Mujeres",
-   "pct": 27.7
+   "pct": 27.65620658185592,
+   "hogares_muestra": 2190,
+   "hogares_incluidos": 71176.96949728962,
+   "hogares_estimados": 257363.45758997134
+  },
+  {
+   "tamano": "5",
+   "sexo": "Hombres",
+   "pct": 31.609863756728597,
+   "hogares_muestra": 1786,
+   "hogares_incluidos": 75050.53733633884,
+   "hogares_estimados": 237427.5887866277
   },
   {
    "tamano": "5",
    "sexo": "Mujeres",
-   "pct": 29.2
+   "pct": 29.248647177705116,
+   "hogares_muestra": 1078,
+   "hogares_incluidos": 38552.63872393415,
+   "hogares_estimados": 131809.98932942454
   },
   {
-   "tamano": "6 o más personas",
+   "tamano": "6 o más",
+   "sexo": "Hombres",
+   "pct": 29.46170222536267,
+   "hogares_muestra": 1239,
+   "hogares_incluidos": 48521.30488584244,
+   "hogares_estimados": 164692.8087002113
+  },
+  {
+   "tamano": "6 o más",
    "sexo": "Mujeres",
-   "pct": 23.7
+   "pct": 23.726212423168647,
+   "hogares_muestra": 805,
+   "hogares_incluidos": 24768.914616649578,
+   "hogares_estimados": 104394.72670514714
   }
  ]
 }

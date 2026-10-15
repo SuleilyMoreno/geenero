@@ -75,6 +75,7 @@ def finagro(rurales: set[str]) -> dict:
     dpto = defaultdict(lambda: defaultdict(float))
     linea = defaultdict(lambda: defaultdict(float))
     productor = defaultdict(lambda: defaultdict(float))
+    linea_monto = defaultdict(lambda: defaultdict(float))
     for f in filas:
         mun = str(f.get("cod_municipio", "")).split(".")[0].zfill(5)
         if mun not in rurales:
@@ -84,6 +85,7 @@ def finagro(rurales: set[str]) -> dict:
             acc[s][k] += num(f.get(k))
         dpto[mun[:2]][s] += num(f["n"])
         linea[s][f.get("linea_credito") or "Sin dato"] += num(f["n"])
+        linea_monto[s][f.get("linea_credito") or "Sin dato"] += num(f.get("monto"))
         productor[s][f.get("tipo_productor") or "Sin dato"] += num(f["n"])
 
     # La mediana no se puede sumar entre grupos: se pide por sexo con el filtro rural.
@@ -113,6 +115,8 @@ def finagro(rurales: set[str]) -> dict:
         "por_sexo": por_sexo,
         "por_dpto": {d: dict(v) for d, v in sorted(dpto.items())},
         "linea_credito": {s: dict(v) for s, v in linea.items()},
+        # Monto promedio por línea = monto total de la línea ÷ créditos de la línea.
+        "linea_monto_promedio": {s: {k: linea_monto[s][k] / linea[s][k] for k in linea[s] if linea[s][k]} for s in linea},
         "tipo_productor": {s: dict(v) for s, v in productor.items()},
     }
 
@@ -132,6 +136,7 @@ def superfinanciera(rurales: set[str]) -> dict:
     acc = defaultdict(lambda: defaultdict(float))
     dpto = defaultdict(lambda: defaultdict(float))
     tipo = defaultdict(lambda: defaultdict(float))
+    tipo_det = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     for f in filas:
         mun = str(f.get("codigo_municipio", "")).zfill(5)
         if mun not in rurales:
@@ -140,7 +145,10 @@ def superfinanciera(rurales: set[str]) -> dict:
         for k in ("filas", "creditos", "monto", "monto_con_tasa", "tasa_x_monto"):
             acc[s][k] += num(f.get(k))
         dpto[mun[:2]][s] += num(f["creditos"])
-        tipo[s][f.get("tipo_de_cr_dito") or "Sin dato"] += num(f["creditos"])
+        t = f.get("tipo_de_cr_dito") or "Sin dato"
+        tipo[s][t] += num(f["creditos"])
+        for k in ("creditos", "monto", "monto_con_tasa", "tasa_x_monto"):
+            tipo_det[s][t][k] += num(f.get(k))
     por_sexo = {
         s: {
             "filas_agregadas": int(a["filas"]),
@@ -160,6 +168,11 @@ def superfinanciera(rurales: set[str]) -> dict:
         "por_sexo": por_sexo,
         "por_dpto": {d: dict(v) for d, v in sorted(dpto.items())},
         "tipo_credito": {s: dict(v) for s, v in tipo.items()},
+        # Por tipo de crédito: monto promedio por crédito y tasa ponderada por monto (sin tasas 0).
+        "tipo_credito_condiciones": {s: {t: {"creditos": a["creditos"],
+                                             "monto_promedio": a["monto"] / a["creditos"] if a["creditos"] else None,
+                                             "tasa_ponderada_ea": a["tasa_x_monto"] / a["monto_con_tasa"] if a["monto_con_tasa"] else None}
+                                         for t, a in v.items()} for s, v in tipo_det.items()},
     }
 
 

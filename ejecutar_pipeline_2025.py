@@ -25,6 +25,15 @@ def ejecutar(*args: str) -> None:
     subprocess.run([sys.executable, *args], cwd=ROOT, check=True)
 
 
+def si_existe(entrada: str, *args: str) -> None:
+    """Ejecuta el paso solo si su insumo local existe; si no, los generadores
+    conservan los valores ya publicados y lo indican en el aviso del tablero."""
+    if any((ROOT / entrada).parent.glob((ROOT / entrada).name)):
+        ejecutar(*args)
+    else:
+        print(f"\n(omitido) {args[0]}: no se encontró {entrada}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sin-microdatos", action="store_true",
@@ -36,8 +45,8 @@ def main() -> None:
         ejecutar("decodificar_geih_2025.py", "--datos", "GEIH_2025",
                  "--diccionario", "Diccionario_de_datos_GEIH_2025.xlsx", "--salida", "plata/geih_2025_decodificada")
         ejecutar("procesar_enut_2024_2025.py")
-        ejecutar("procesar_fies_2025.py")
-        ejecutar("procesar_terridata.py")
+        si_existe("FIES.xlsx", "procesar_fies_2025.py")
+        si_existe("Terridata1/TerriData_Dim*.xlsx", "procesar_terridata.py")
 
     ejecutar("extraer_credito_rural_2025.py")
 
