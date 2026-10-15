@@ -44,27 +44,35 @@ def main() -> None:
             FROM {geih(PERSONAS)} WHERE TRY_CAST(cual_es_el_parentesco_de_con_el AS INTEGER)=1)
       SELECT v.*, j.sexo, {NIVEL} nivel FROM v LEFT JOIN j USING (mes_archivo, DIRECTORIO, HOGAR)""")
     productos = con.execute("SELECT " + ",".join(f"100*SUM(p{i}*w)/SUM(w)" for i in range(1, 12)) + " FROM h").fetchone()
+    productos_n = con.execute("SELECT " + ",".join(f"SUM(p{i}*w)" for i in range(1, 12)) + " FROM h").fetchone()
     tasa = "100*SUM(incluido*w)/NULLIF(SUM(w),0)"
-    educacion = con.execute(f"""SELECT nivel, sexo, {tasa}, COUNT(*) FROM h
+    educacion = con.execute(f"""SELECT nivel, sexo, {tasa}, COUNT(*), SUM(incluido*w), SUM(w) FROM h
         WHERE sexo IS NOT NULL AND nivel IS NOT NULL GROUP BY 1,2 ORDER BY 1,2""").fetchall()
-    tamano = con.execute(f"""SELECT CASE WHEN tamano>=6 THEN '6 o más' ELSE CAST(tamano AS VARCHAR) END t, sexo, {tasa}, COUNT(*)
+    tamano = con.execute(f"""SELECT CASE WHEN tamano>=6 THEN '6 o más' ELSE CAST(tamano AS VARCHAR) END t, sexo, {tasa}, COUNT(*), SUM(incluido*w), SUM(w)
         FROM h WHERE sexo IS NOT NULL AND tamano IS NOT NULL GROUP BY 1,2 ORDER BY 1,2""").fetchall()
     por_sexo = dict(con.execute(f"SELECT sexo, {tasa} FROM h WHERE sexo IS NOT NULL GROUP BY 1").fetchall())
+    por_sexo_n = {s: {"incluidos": a, "incluidos_movil": b, "hogares": c} for s, a, b, c in con.execute(
+        "SELECT sexo, SUM(incluido*w), SUM(incluido_movil*w), SUM(w) FROM h WHERE sexo IS NOT NULL GROUP BY 1").fetchall()}
     tasa_movil = tasa.replace("incluido", "incluido_movil")
     por_sexo_movil = dict(con.execute(f"SELECT sexo, {tasa_movil} FROM h WHERE sexo IS NOT NULL GROUP BY 1").fetchall())
-    nacional = con.execute(f"SELECT {tasa}, {tasa_movil}, COUNT(*) FROM h").fetchone()
+    nacional = con.execute(f"SELECT {tasa}, {tasa_movil}, COUNT(*), SUM(incluido*w), SUM(incluido_movil*w), SUM(w) FROM h").fetchone()
     con.close()
 
     guardar_json("inclusion_financiera_rural_2025.json", {
         "origen": f"GEIH 2025 ({n} meses), hogares rurales (CLASE 2/3).",
         "pendientes": [],
-        "productos_pct": sorted(({"producto": p, "pct": v} for p, v in zip(NOMBRES, productos)), key=lambda x: -x["pct"]),
-        "inclusion_nacional": {"tradicional": nacional[0], "con_movil": nacional[1], "hogares_muestra": nacional[2]},
+        "productos_pct": sorted(({"producto": p, "pct": v, "hogares": h} for p, v, h in zip(NOMBRES, productos, productos_n)),
+                                key=lambda x: -x["pct"]),
+        "inclusion_nacional": {"tradicional": nacional[0], "con_movil": nacional[1], "hogares_muestra": nacional[2],
+                               "hogares_incluidos": nacional[3], "hogares_incluidos_movil": nacional[4], "hogares_estimados": nacional[5]},
+        "inclusion_hogares_por_sexo_jefatura": por_sexo_n,
         "inclusion_por_sexo_jefatura": por_sexo,
         "inclusion_movil_por_sexo_jefatura": por_sexo_movil,
         # Se omiten celdas con menos de 30 hogares en la muestra (estimación inestable).
-        "inclusion_por_educacion": [{"nivel": a, "sexo": s, "pct": v, "hogares_muestra": m} for a, s, v, m in educacion if m >= 30],
-        "inclusion_por_tamano": [{"tamano": a, "sexo": s, "pct": v, "hogares_muestra": m} for a, s, v, m in tamano if m >= 30],
+        "inclusion_por_educacion": [{"nivel": a, "sexo": s, "pct": v, "hogares_muestra": m, "hogares_incluidos": i, "hogares_estimados": t}
+                                    for a, s, v, m, i, t in educacion if m >= 30],
+        "inclusion_por_tamano": [{"tamano": a, "sexo": s, "pct": v, "hogares_muestra": m, "hogares_incluidos": i, "hogares_estimados": t}
+                                 for a, s, v, m, i, t in tamano if m >= 30],
     })
 
 

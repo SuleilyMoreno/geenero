@@ -44,14 +44,16 @@ def main() -> None:
     else:
         ipm = {d: r.get("ipm") for d, r in ant.items()}
         pendientes.append("IPM (TerriData): se conservan los valores publicados; falta plata/terridata_dim1_limpia.parquet para recalcular.")
-    fies = {dpto_por_nombre(d): v for d, v in con.execute(
-        f"SELECT Departamento, Inseguridad_Moderada_Grave_Pct FROM read_parquet('{FIES_PREV}')").fetchall()}
-    inclusion = {d: (a, b) for d, a, b in con.execute(f"""
+    # FIES publica los hogares en miles.
+    fies = {dpto_por_nombre(d): (v, v / 100 * t * 1000 if v is not None and t is not None else None) for d, v, t in con.execute(
+        f"SELECT Departamento, Inseguridad_Moderada_Grave_Pct, Total_Hogares FROM read_parquet('{FIES_PREV}')").fetchall()}
+    inclusion = {d: r for d, *r in con.execute(f"""
         WITH h AS (SELECT LPAD(CAST(DPTO AS VARCHAR),2,'0') DPTO, MAX({peso('x', n)}) w,
                           MAX(CASE WHEN {INCLUIDO} THEN 1 ELSE 0 END) incluido,
                           MAX(CASE WHEN {INCLUIDO_MOVIL} THEN 1 ELSE 0 END) incluido_movil
                    FROM {geih(VIVIENDA)} x GROUP BY mes_archivo, 1, DIRECTORIO, HOGAR)
-        SELECT DPTO, 100*SUM(incluido*w)/NULLIF(SUM(w),0), 100*SUM(incluido_movil*w)/NULLIF(SUM(w),0) FROM h GROUP BY 1""").fetchall()}
+        SELECT DPTO, 100*SUM(incluido*w)/NULLIF(SUM(w),0), 100*SUM(incluido_movil*w)/NULLIF(SUM(w),0),
+               SUM(incluido*w), SUM(incluido_movil*w), SUM(w) FROM h GROUP BY 1""").fetchall()}
     con.close()
 
     guardar_json("departamentos_rural_2025.json", {
@@ -61,9 +63,13 @@ def main() -> None:
             "DPTO": d, "departamento": nombre,
             "municipios_total": total[d], "municipios_rurales": rurales[d],
             "ruralidad_pct": 100 * rurales[d] / total[d] if total[d] else None,
-            "ipm": ipm.get(d), "inseguridad_alimentaria": fies.get(d),
-            "inclusion_financiera_pct": inclusion.get(d, (None, None))[0],
-            "inclusion_con_movil_pct": inclusion.get(d, (None, None))[1],
+            "ipm": ipm.get(d), "inseguridad_alimentaria": fies.get(d, (None, None))[0],
+            "inseguridad_hogares": fies.get(d, (None, None))[1],
+            "inclusion_financiera_pct": inclusion.get(d, [None] * 5)[0],
+            "inclusion_con_movil_pct": inclusion.get(d, [None] * 5)[1],
+            "hogares_incluidos": inclusion.get(d, [None] * 5)[2],
+            "hogares_incluidos_movil": inclusion.get(d, [None] * 5)[3],
+            "hogares_estimados": inclusion.get(d, [None] * 5)[4],
         } for d, nombre in DEPARTAMENTOS.items()],
     })
 

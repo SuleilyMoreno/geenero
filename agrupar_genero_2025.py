@@ -75,6 +75,7 @@ def main() -> None:
                MAX(CASE WHEN parentesco=1 THEN w END) w
         FROM p GROUP BY 1,2,3""")
     jefatura = por_sexo(con, "SELECT sexo_jefe, SUM(personas*w)/NULLIF(SUM(w),0) FROM hogares GROUP BY 1")
+    hogares_jefatura = por_sexo(con, "SELECT sexo_jefe, SUM(w) FROM hogares GROUP BY 1")  # hogares estimados
     jefatura_femenina = con.execute(
         "SELECT 100*SUM(CASE WHEN sexo_jefe=2 THEN w ELSE 0 END)/NULLIF(SUM(w),0) FROM hogares WHERE sexo_jefe IS NOT NULL").fetchone()[0]
 
@@ -97,15 +98,16 @@ def main() -> None:
         WHERE cod BETWEEN 1 AND 6 GROUP BY 1,2""").fetchall():
         if s in SEXO:
             principal[SEXO[s]][cod - 1] = v
+    principal_n = principal  # personas estimadas por categoría
     principal = {s: [100 * x / sum(v) if sum(v) else None for x in v] for s, v in principal.items()}
 
     # Otras formas de trabajo: % de personas de cada sexo que realiza cada actividad.
-    columnas = ",".join(
-        f"100*SUM(CASE WHEN TRY_CAST(o.\"{c}\" AS INTEGER)=1 THEN p.w ELSE 0 END)/NULLIF(SUM(p.w),0)"
-        for _, c in ACTIVIDADES)
-    actividades = {SEXO[r[0]]: list(r[1:]) for r in con.execute(f"""
-        SELECT p.sexo, {columnas} FROM {geih(OTRAS_FORMAS)} o JOIN ({personas}) p USING ({LLAVE})
+    columnas = ",".join(f"SUM(CASE WHEN TRY_CAST(o.\"{c}\" AS INTEGER)=1 THEN p.w ELSE 0 END)" for _, c in ACTIVIDADES)
+    filas_act = {SEXO[r[0]]: (r[1], list(r[2:])) for r in con.execute(f"""
+        SELECT p.sexo, SUM(p.w), {columnas} FROM {geih(OTRAS_FORMAS)} o JOIN ({personas}) p USING ({LLAVE})
         GROUP BY 1""").fetchall() if r[0] in SEXO}
+    actividades = {s: [100 * x / t for x in v] for s, (t, v) in filas_act.items()}
+    actividades_n = {s: v for s, (_, v) in filas_act.items()}
 
     # ENUT: horas por día ponderadas con FEX_C, población rural de 10 años o más (P6040 >= 10:
     # quienes responden el diario de actividades). Las personas que no realizan la actividad cuentan con 0.
@@ -113,8 +115,8 @@ def main() -> None:
     bloques = {k: horas_enut(cols, v) for k, v in ENUT_BLOQUES.items()}
     fex = "TRY_CAST(replace(CAST(FEX_C AS VARCHAR), ',', '.') AS DOUBLE)"  # la ENUT publica FEX_C con coma decimal
     sel = ",".join(f"SUM(({e})*{fex})/NULLIF(SUM({fex}),0)" for e in bloques.values())
-    tiempo = {SEXO[r[0]]: dict(zip(bloques, r[1:])) for r in con.execute(f"""
-        SELECT TRY_CAST(P6020 AS INTEGER), {sel} FROM read_parquet('{ENUT}')
+    tiempo = {SEXO[r[0]]: dict(zip(bloques, r[2:]), poblacion=r[1]) for r in con.execute(f"""
+        SELECT TRY_CAST(P6020 AS INTEGER), SUM({fex}), {sel} FROM read_parquet('{ENUT}')
         WHERE CAST(CLASE AS VARCHAR) IN ('2','3') AND TRY_CAST(P6040 AS INTEGER) >= 10 GROUP BY 1""").fetchall() if r[0] in SEXO}
     muestra = {
         "personas": con.execute(f"SELECT COUNT(*) FROM {geih(PERSONAS)}").fetchone()[0],
@@ -130,14 +132,16 @@ def main() -> None:
         "pendientes": [],
         "jefatura_personas_promedio": jefatura,
         "jefatura_femenina_pct": jefatura_femenina,
+        "hogares_jefatura": hogares_jefatura,
         "tiempo_enut_horas_dia": tiempo,
         "participacion_mujeres": {"valor": 100 * occ.get("Mujeres", 0) / total_occ if total_occ else None,
                                   "universo": "ocupados"},
         "agro_pct": {s: 100 * v / total_agro for s, v in agro.items()} if total_agro else {},
+        "agro_n": agro, "ocupados_n": occ,  # personas estimadas (Σ w)
         "ocupados_pct": {s: 100 * v / total_occ for s, v in occ.items()} if total_occ else {},
         "ingreso_laboral": ingreso,
-        "actividades": {"etiquetas": [a for a, _ in ACTIVIDADES], **actividades},
-        "actividad_principal": {"etiquetas": PRINCIPAL, **principal},
+        "actividades": {"etiquetas": [a for a, _ in ACTIVIDADES], **actividades, "n": actividades_n},
+        "actividad_principal": {"etiquetas": PRINCIPAL, **principal, "n": principal_n},
     })
 
 

@@ -38,13 +38,13 @@ def cargar(nombre: str) -> dict:
 CSS = """
 :root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6d68;
 --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--accent:#256abf;--mujeres:#d55181;--hombres:#2a78d6;
---otro:#898781;--serie:#2a78d6;--warn-bg:#fff6e0;--warn-ink:#6b4a00;--seq0:#cde2fb;--seq1:#86b6ef;--seq2:#3987e5;--seq3:#1c5cab;--seq4:#0d366b}
+--otro:#898781;--serie:#2a78d6;--cat1:#eb6834;--cat2:#1baf7a;--cat3:#6250d6;--ord1:#86b6ef;--ord2:#3987e5;--ord3:#1c5cab;--ord4:#0d366b;--warn-bg:#fff6e0;--warn-ink:#6b4a00;--seq0:#cde2fb;--seq1:#86b6ef;--seq2:#3987e5;--seq3:#1c5cab;--seq4:#0d366b}
 @media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
 --ink:#f0efec;--ink2:#c3c2b7;--muted:#a3a198;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--accent:#6da7ec;
---mujeres:#d55181;--hombres:#3987e5;--otro:#898781;--serie:#3987e5;--warn-bg:#2a2210;--warn-ink:#f3d58a}}
+--mujeres:#d55181;--hombres:#3987e5;--otro:#898781;--serie:#3987e5;--cat1:#d95926;--cat2:#199e70;--cat3:#9085e9;--ord1:#184f95;--ord2:#2a78d6;--ord3:#6da7ec;--ord4:#b7d3f6;--warn-bg:#2a2210;--warn-ink:#f3d58a}}
 :root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#a3a198;
 --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--accent:#6da7ec;--mujeres:#d55181;--hombres:#3987e5;--otro:#898781;
---serie:#3987e5;--warn-bg:#2a2210;--warn-ink:#f3d58a}
+--serie:#3987e5;--cat1:#d95926;--cat2:#199e70;--cat3:#9085e9;--ord1:#184f95;--ord2:#2a78d6;--ord3:#6da7ec;--ord4:#b7d3f6;--warn-bg:#2a2210;--warn-ink:#f3d58a}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 a{color:var(--accent)}main{max-width:1280px;margin:0 auto;padding:24px 16px 64px}
@@ -63,7 +63,7 @@ border-radius:999px;padding:4px 12px;font-size:13px;color:var(--ink2)}.chip b{co
 .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
 .card{grid-column:span 6;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;min-width:0}
 .card.wide{grid-column:span 12}.kpi{grid-column:span 3}
-.kpi .label{font-size:13px;color:var(--ink2)}.kpi .value{font-size:30px;font-weight:700;margin:6px 0 2px}
+.kpi .label{font-size:13px;color:var(--ink2)}.kpi .cuenta{font-size:13px;color:var(--ink2);margin:0}.kpi .value{font-size:30px;font-weight:700;margin:6px 0 2px}
 .pair{display:flex;gap:20px;flex-wrap:wrap}.pair .value{font-size:22px;white-space:nowrap}.pair small{display:flex;align-items:center;gap:6px;color:var(--ink2)}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .sub{color:var(--ink2);font-size:13px;margin:0 0 8px}.src{color:var(--muted);font-size:12px;margin-top:8px}
@@ -107,16 +107,32 @@ function base(extra={}){return Object.assign({autosize:true,paper_bgcolor:css('-
 const CFG={displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']};
 function deep(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k])deep(a[k],b[k]);else a[k]=b[k]}return a}
 function plot(id,traces,lay={}){const el=document.getElementById(id);if(!el)return;Plotly.react(el,traces,deep(base(),lay),CFG)}
+// Cantidad que representa un valor: «≈ 1.234.567 hogares». Las encuestas usan población expandida (Σ FEX ÷ 12).
+const cant=(x,u)=>x==null||!isFinite(x)?'':(u==='créditos'||u.startsWith('en la muestra')?'':'≈ ')+f0(x)+' '+u;
 // Barras horizontales agrupadas por sexo: categorías en el eje Y (sin rotar etiquetas).
-function barrasSexo(id,cats,series,{fmt=pct,titulo='Porcentaje (%)',rango=null,orden=null}={}){
+// n = {sexo: [cantidades]} y unidad = 'personas' | 'hogares' | 'créditos' se muestran al pasar el mouse.
+function barrasSexo(id,cats,series,{fmt=pct,titulo='Porcentaje (%)',rango=null,n=null,unidad=''}={}){
  const sx=Object.keys(series);plot(id,sx.map(s=>({type:'bar',orientation:'h',name:s,y:cats.map(c=>wrap(c,22)),x:series[s],
   marker:{color:colorSexo(s),cornerradius:4},text:series[s].map(fmt),textposition:'outside',cliponaxis:false,
-  textfont:{color:css('--ink2')},hovertemplate:'%{y}<br>'+s+': %{text}<extra></extra>'})),
+  customdata:cats.map((_,i)=>n&&n[s]?cant(n[s][i],unidad):''),
+  textfont:{color:css('--ink2')},hovertemplate:'%{y}<br><b>'+s+'</b>: %{text}<br>%{customdata}<extra></extra>'})),
   {barmode:'group',height:Math.max(320,cats.length*sx.length*30+100),yaxis:{autorange:'reversed'},xaxis:{title:{text:titulo},range:rango},margin:{l:10,r:60,t:30,b:50}})}
-function barras(id,cats,vals,{fmt=pct,titulo='Porcentaje (%)',rango=null,color=null,h=null}={}){
+function barras(id,cats,vals,{fmt=pct,titulo='Porcentaje (%)',rango=null,color=null,h=null,n=null,unidad=''}={}){
  plot(id,[{type:'bar',orientation:'h',y:cats.map(c=>wrap(c,24)),x:vals,marker:{color:color||css('--serie'),cornerradius:4},
-  text:vals.map(fmt),textposition:'outside',cliponaxis:false,textfont:{color:css('--ink2')},hovertemplate:'%{y}: %{text}<extra></extra>'}],
+  customdata:cats.map((_,i)=>n?cant(n[i],unidad):''),
+  text:vals.map(fmt),textposition:'outside',cliponaxis:false,textfont:{color:css('--ink2')},hovertemplate:'%{y}: <b>%{text}</b><br>%{customdata}<extra></extra>'}],
   {showlegend:false,height:h||Math.max(300,cats.length*30+80),yaxis:{autorange:'reversed'},xaxis:{title:{text:titulo},range:rango},margin:{l:10,r:70,t:10,b:50}})}
+const PAL_CAT=()=>['--cat1','--cat2','--cat3'].map(css), PAL_ORD=()=>['--ord1','--ord2','--ord3','--ord4'].map(css);
+// Donas: valores = cantidades (el % lo calcula Plotly). Una dona por grupo (p. ej. Mujeres | Hombres) en el mismo gráfico.
+function donas(id,grupos,labels,{colores,unidad='créditos'}={}){
+ const k=grupos.length,w=1/k;
+ plot(id,grupos.map((g,i)=>({type:'pie',hole:.62,sort:false,direction:'clockwise',name:g.nombre||'',labels,values:g.valores,
+  domain:{x:[i*w+.03,(i+1)*w-.03],y:[.05,.95]},marker:{colors:colores,line:{color:css('--surface'),width:2}},
+  texttemplate:'%{percent:.1%}',textposition:'outside',textfont:{color:css('--ink2')},automargin:true,
+  hovertemplate:(g.nombre?'<b>'+g.nombre+'</b><br>':'')+'%{label}: <b>%{percent:.1%}</b><br>%{value:,.0f} '+unidad+'<extra></extra>'})),
+  {showlegend:true,legend:{orientation:'h',y:-.05,x:.5,xanchor:'center'},height:400,margin:{l:20,r:20,t:30,b:50},
+   annotations:grupos.map((g,i)=>({text:(g.nombre?'<b>'+g.nombre+'</b><br>':'')+f0(g.valores.reduce((a,b)=>a+(b||0),0))+'<br>'+unidad,
+    x:i*w+w/2,y:.5,xref:'paper',yref:'paper',showarrow:false,font:{size:13,color:css('--ink')}}))})}
 // Tabla accesible gemela del gráfico.
 function tabla(id,cabeza,filas){const el=document.getElementById(id);if(!el)return;
  el.innerHTML='<details><summary>Ver tabla de datos</summary><div class="tabla"><table><thead><tr>'+cabeza.map(c=>'<th>'+c+'</th>').join('')+
@@ -185,7 +201,8 @@ def kpi(id_: str, etiqueta: str, fuente: str, par: bool = False) -> str:
             f"<div class='value' id='{id_}_{s.lower()}'>N/D</div></div>" for s in ("Mujeres", "Hombres")) + "</div>")
     else:
         valor = f"<div class='value' id='{id_}'>N/D</div>"
-    return f"<article class='card kpi'><div class='label'>{etiqueta}</div>{valor}<p class='src'>{fuente}</p></article>"
+    return (f"<article class='card kpi'><div class='label'>{etiqueta}</div>{valor}"
+            f"<p class='cuenta' id='{id_}_n'></p><p class='src'>{fuente}</p></article>")
 
 
 # ───────────────────────────── Tableros ─────────────────────────────
@@ -215,27 +232,29 @@ def tablero_genero(g: dict, cr: dict) -> None:
     ]) + "</section>" + variables(GENERO)
     script = r"""DIBUJAR=()=>{const g=DATA.g,c=DATA.c;
  txt('part',pct(g.participacion_mujeres.valor));txt('jfem',pct(g.jefatura_femenina_pct));txt('agro',pct(g.agro_pct.Mujeres));
- const cm=c.por_sexo.Mujeres.creditos,ch=c.por_sexo.Hombres.creditos;txt('credm',pct(100*cm/(cm+ch)));
+ txt('part_n',cant(g.ocupados_n.Mujeres,'mujeres ocupadas de '+f0(g.ocupados_n.Mujeres+g.ocupados_n.Hombres)));
+ txt('jfem_n',cant(g.hogares_jefatura.Mujeres,'hogares con jefa'));txt('agro_n',cant(g.agro_n.Mujeres,'mujeres en el agro'));
+ const cm=c.por_sexo.Mujeres.creditos,ch=c.por_sexo.Hombres.creditos;txt('credm',pct(100*cm/(cm+ch)));txt('credm_n',f0(cm)+' de '+f0(cm+ch)+' créditos');
  SEXOS.forEach(s=>{const k=s.toLowerCase(),T=g.tiempo_enut_horas_dia[s]||{};txt('tdom_'+k,f1(T.trabajo_domestico)+' h');txt('tcui_'+k,f1(T.cuidado)+' h');
   txt('ing_'+k,copM((g.ingreso_laboral[s]||{}).mediana));txt('jef_'+k,NF(2).format(g.jefatura_personas_promedio[s]))});
  const filas=[['Ocupados rurales',g.ocupados_pct],['Ocupados en el agro',g.agro_pct]];
  plot('comp',SEXOS.map(s=>({type:'bar',orientation:'h',name:s,y:filas.map(f=>f[0]),x:filas.map(f=>f[1][s]),marker:{color:colorSexo(s),line:{color:css('--surface'),width:2}},
-  text:filas.map(f=>pct(f[1][s])),textposition:'inside',insidetextanchor:'middle',textfont:{color:'#fff'},hovertemplate:'%{y}<br>'+s+': %{text}<extra></extra>'})),
+  text:filas.map(f=>pct(f[1][s])),textposition:'inside',insidetextanchor:'middle',textfont:{color:'#fff'},
+  customdata:[cant(g.ocupados_n[s],'personas'),cant(g.agro_n[s],'personas')],hovertemplate:'%{y}<br><b>'+s+'</b>: %{text}<br>%{customdata}<extra></extra>'})),
   {barmode:'stack',height:260,yaxis:{autorange:'reversed'},xaxis:{title:{text:'Porcentaje (%)'},range:[0,100]},margin:{l:10,r:20,t:30,b:50}});
  tabla('comp_t',['Grupo','Mujeres','Hombres'],filas.map(f=>[f[0],pct(f[1].Mujeres),pct(f[1].Hombres)]));
  const I=g.ingreso_laboral,mi=['Mediana','Media'];
- barrasSexo('ingreso',mi,Object.fromEntries(SEXOS.map(s=>[s,[I[s].mediana/1e6,I[s].media/1e6]])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos al mes'});
+ barrasSexo('ingreso',mi,Object.fromEntries(SEXOS.map(s=>[s,[I[s].mediana/1e6,I[s].media/1e6]])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos al mes',n:Object.fromEntries(SEXOS.map(s=>[s,[I[s].n,I[s].n]])),unidad:'ocupados con ingreso en la muestra'});
  tabla('ingreso_t',['Medida','Mujeres','Hombres'],mi.map((m,i)=>[m,cop([I.Mujeres.mediana,I.Mujeres.media][i]),cop([I.Hombres.mediana,I.Hombres.media][i])]));
- const P=g.actividad_principal;barrasSexo('principal',P.etiquetas,{Mujeres:P.Mujeres,Hombres:P.Hombres},{rango:[0,100]});
- tabla('principal_t',['Actividad','Mujeres','Hombres'],P.etiquetas.map((e,i)=>[e,pct(P.Mujeres[i]),pct(P.Hombres[i])]));
- const A=g.actividades;barrasSexo('labores',A.etiquetas,{Mujeres:A.Mujeres,Hombres:A.Hombres},{rango:[0,100]});
- tabla('labores_t',['Actividad','Mujeres','Hombres'],A.etiquetas.map((e,i)=>[e,pct(A.Mujeres[i]),pct(A.Hombres[i])]));
+ const P=g.actividad_principal;barrasSexo('principal',P.etiquetas,{Mujeres:P.Mujeres,Hombres:P.Hombres},{rango:[0,100],n:P.n,unidad:'personas'});
+ tabla('principal_t',['Actividad','Mujeres (%)','Mujeres (personas)','Hombres (%)','Hombres (personas)'],P.etiquetas.map((e,i)=>[e,pct(P.Mujeres[i]),f0(P.n.Mujeres[i]),pct(P.Hombres[i]),f0(P.n.Hombres[i])]));
+ const A=g.actividades;barrasSexo('labores',A.etiquetas,{Mujeres:A.Mujeres,Hombres:A.Hombres},{rango:[0,100],n:A.n,unidad:'personas'});
+ tabla('labores_t',['Actividad','Mujeres (%)','Mujeres (personas)','Hombres (%)','Hombres (personas)'],A.etiquetas.map((e,i)=>[e,pct(A.Mujeres[i]),f0(A.n.Mujeres[i]),pct(A.Hombres[i]),f0(A.n.Hombres[i])]));
  const T=g.tiempo_enut_horas_dia,ks=['trabajo_domestico','cuidado','autoconsumo'],cats=['Trabajo doméstico','Cuidado de personas','Producción para autoconsumo'];
- barrasSexo('horas',cats,Object.fromEntries(SEXOS.map(s=>[s,ks.map(k=>T[s][k])])),{fmt:x=>f1(x)+' h',titulo:'Horas por día'});
+ barrasSexo('horas',cats,Object.fromEntries(SEXOS.map(s=>[s,ks.map(k=>T[s][k])])),{fmt:x=>f1(x)+' h',titulo:'Horas por día',n:Object.fromEntries(SEXOS.map(s=>[s,ks.map(()=>T[s].poblacion)])),unidad:'personas de 10 años o más (base del promedio)'});
  tabla('horas_t',['Actividad','Mujeres','Hombres'],cats.map((e,i)=>[e,f1(T.Mujeres[ks[i]])+' h',f1(T.Hombres[ks[i]])+' h']));
  const ko=['Mujeres','Hombres','Sin dato / persona jurídica'].filter(k=>c.por_sexo[k]),v=ko.map(k=>c.por_sexo[k].creditos),tot=v.reduce((a,b)=>a+b,0);
- plot('credito',[{type:'bar',orientation:'h',y:ko.map(k=>wrap(k,16)),x:v,marker:{color:ko.map(colorSexo),cornerradius:4},text:v.map(x=>f0(x)+' ('+pct(100*x/tot)+')'),
-  textposition:'outside',cliponaxis:false,textfont:{color:css('--ink2')},hovertemplate:'%{y}: %{text}<extra></extra>'}],{showlegend:false,yaxis:{autorange:'reversed'},xaxis:{title:{text:'Número de créditos'}},margin:{l:10,r:130,t:10,b:50}});
+ donas('credito',[{valores:v}],ko,{colores:ko.map(colorSexo),unidad:'créditos'});
  tabla('credito_t',['Sexo','Créditos','% del total'],ko.map((k,i)=>[k,f0(v[i]),pct(100*v[i]/tot)]));};"""
     pagina("genero_dashboard.html", "Brechas de género en la ruralidad",
            "Comparación entre mujeres y hombres de centros poblados y rural disperso: trabajo, cuidado, ingresos, jefatura del hogar y crédito.",
@@ -275,20 +294,28 @@ def tablero_calidad(q: dict, deptos: dict) -> None:
     ]) + "</section>" + variables(CALIDAD)
     script = r"""DIBUJAR=()=>{const q=DATA.q,R=q.por_dpto,avg=k=>{const a=R.map(r=>r[k]).filter(x=>x!=null&&isFinite(x));return a.length?a.reduce((s,x)=>s+x,0)/a.length:null};
  txt('hog',f0(q.hogares_muestra));txt('fies',pct(q.fies_rural_nacional!=null?q.fies_rural_nacional:avg('inseguridad_alimentaria')));txt('ipm',pct(avg('ipm')));txt('amb',pct(q.contaminacion_pct));
- const S=[...q.servicios].sort((a,b)=>b.pct-a.pct);barras('servicios',S.map(s=>s.servicio),S.map(s=>s.pct),{rango:[0,110]});tabla('servicios_t',['Servicio','% de hogares'],S.map(s=>[s.servicio,pct(s.pct)]));
+ txt('hog_n','Representan '+cant(q.hogares_estimados,'hogares rurales'));txt('fies_n',cant(q.fies_rural_hogares,'hogares'));txt('amb_n',cant(q.contaminacion_hogares,'hogares'));
+ txt('ipm_n','TerriData no publica el número de personas');
+ const S=[...q.servicios].sort((a,b)=>b.pct-a.pct);barras('servicios',S.map(s=>s.servicio),S.map(s=>s.pct),{rango:[0,110],n:S.map(s=>s.hogares),unidad:'hogares'});tabla('servicios_t',['Servicio','% de hogares','Hogares estimados'],S.map(s=>[s.servicio,pct(s.pct),f0(s.hogares)]));
  const AM=Object.entries(q.contaminacion_componentes||{}).sort((a,b)=>b[1]-a[1]);
- if(AM.length){barras('ambiental',AM.map(a=>a[0]),AM.map(a=>a[1]),{rango:[0,105]});tabla('ambiental_t',['Condición','% de hogares'],AM.map(a=>[a[0],pct(a[1])]))}
- const F=q.fies_experiencias;barras('fiesexp',F.map(x=>x.indicador),F.map(x=>x.pct),{rango:[0,100]});tabla('fiesexp_t',['Experiencia','% de hogares'],F.map(x=>[x.indicador,pct(x.pct)]));
+ const AN=q.contaminacion_componentes_hogares||{};
+ if(AM.length){barras('ambiental',AM.map(a=>a[0]),AM.map(a=>a[1]),{rango:[0,105],n:AM.map(a=>AN[a[0]]),unidad:'hogares'});tabla('ambiental_t',['Condición','% de hogares','Hogares estimados'],AM.map(a=>[a[0],pct(a[1]),f0(AN[a[0]])]))}
+ const F=q.fies_experiencias;barras('fiesexp',F.map(x=>x.indicador),F.map(x=>x.pct),{rango:[0,100],n:F.map(x=>x.hogares),unidad:'hogares'});tabla('fiesexp_t',['Experiencia','% de hogares','Hogares estimados'],F.map(x=>[x.indicador,pct(x.pct),f0(x.hogares)]));
  const C=Object.entries(q.ipm_rural_componentes).sort((a,b)=>b[1]-a[1]);barras('ipmcomp',C.map(c=>c[0].replace(/^./,m=>m.toUpperCase())),C.map(c=>c[1]),{rango:[0,110]});tabla('ipmcomp_t',['Privación','%'],C.map(c=>[c[0],pct(c[1])]));
  const I=q.ingreso,box=(k,n)=>({type:'box',orientation:'h',name:n,y:[n],q1:[I[k].q1],median:[I[k].mediana],q3:[I[k].q3],lowerfence:[I[k].p5],upperfence:[I[k].p95],mean:[I[k].media],
-  marker:{color:css('--serie')},line:{color:css('--serie')},fillcolor:'rgba(57,135,229,.25)',hovertemplate:'%{y}<extra></extra>'});
+  marker:{color:css('--serie')},line:{color:css('--serie')},fillcolor:'rgba(57,135,229,.25)',
+  hovertemplate:'<b>'+n+'</b><br>Mediana: '+cop(I[k].mediana)+'<br>Media: '+cop(I[k].media)+'<br>Percentil 25–75: '+cop(I[k].q1)+' – '+cop(I[k].q3)+'<br>'+f0(I[k].n)+' hogares en la muestra<extra></extra>'});
  plot('ingreso',[box('hogar','Hogar'),box('persona','Por persona')],{showlegend:false,xaxis:{title:{text:'Pesos colombianos (COP) al mes'},tickformat:',.0f'},margin:{l:10,r:20,t:10,b:50}});
  tabla('ingreso_t',['Medida','Hogar','Por persona'],[['Percentil 5','p5'],['Percentil 25','q1'],['Mediana','mediana'],['Percentil 75','q3'],['Percentil 95','p95'],['Media','media'],['Hogares','n']].map(([l,k])=>[l,k==='n'?f0(I.hogar[k]):cop(I.hogar[k]),k==='n'?f0(I.persona[k]):cop(I.persona[k])]));
- if(q.ocupacion_hogar){const O=q.ocupacion_hogar;barras('ocupacion',O.map(o=>o.grupo),O.map(o=>o.pct),{rango:[0,100]});tabla('ocupacion_t',['Personas ocupadas','% de hogares'],O.map(o=>[o.grupo,pct(o.pct)]))}
+ if(q.ocupacion_hogar){const O=q.ocupacion_hogar;donas('ocupacion',[{valores:O.map(o=>o.hogares)}],O.map(o=>o.grupo),{colores:PAL_ORD(),unidad:'hogares'});
+  tabla('ocupacion_t',['Personas ocupadas','% de hogares','Hogares estimados'],O.map(o=>[o.grupo,pct(o.pct),f0(o.hogares)]))}
  else document.getElementById('ocupacion').outerHTML='<div class="pendiente">Pendiente de re-ejecución con microdatos GEIH.</div>';
- const dep=(id,k,fmt=pct,rango=[0,105],titulo='Porcentaje (%)')=>{const D=R.filter(r=>r[k]!=null).sort((a,b)=>b[k]-a[k]);barras(id,D.map(d=>d.departamento),D.map(d=>d[k]),{rango,fmt,titulo});tabla(id+'_t',['Departamento','Valor'],D.map(d=>[d.departamento,fmt(d[k])]))};
- dep('dptofies','inseguridad_alimentaria');dep('dptoacu','cobertura_acueducto');dep('dptoamb','contaminacion_proxy_pct');
- dep('dptoing','ingreso_persona_media',copM,null,'Pesos al mes por persona');};"""
+ const dep=(id,k,nk,unidad,fmt=pct,rango=[0,105],titulo='Porcentaje (%)')=>{const D=R.filter(r=>r[k]!=null).sort((a,b)=>b[k]-a[k]);
+  barras(id,D.map(d=>d.departamento),D.map(d=>d[k]),{rango,fmt,titulo,n:D.map(d=>d[nk]),unidad});
+  tabla(id+'_t',['Departamento','Valor','Cantidad'],D.map(d=>[d.departamento,fmt(d[k]),cant(d[nk],unidad)]))};
+ dep('dptofies','inseguridad_alimentaria','inseguridad_hogares','hogares');dep('dptoacu','cobertura_acueducto','acueducto_n','hogares');
+ dep('dptoamb','contaminacion_proxy_pct','contaminacion_n','hogares');
+ dep('dptoing','ingreso_persona_media','hogares_muestra','hogares en la muestra',copM,null,'Pesos al mes por persona');};"""
     pagina("calidad_vida_dashboard.html", "Calidad de vida rural por departamento",
            "Servicios públicos, ingresos, inseguridad alimentaria y pobreza multidimensional en centros poblados y rural disperso.",
            cuerpo, {"q": q}, script)
@@ -322,17 +349,17 @@ def tablero_departamentos(dep: dict, cr: dict) -> None:
     ]) + "<article class='card wide'><h3>Tabla departamental</h3><div id='tabla_dptos' class='tabla'></div></article></section>" + variables(COMUNES_GEIH + VAR_DEPARTAMENTOS)
     script = r"""
 const GJ=DATA.geo;
-function mapa(id,R,k,unidad){const el=document.getElementById(id);
+function mapa(id,R,k,unidad,cuenta=()=>''){const el=document.getElementById(id);
  const V=R.filter(r=>r[k]!=null&&isFinite(r[k]));
  plot(id,[{type:'choropleth',geojson:GJ,featureidkey:'properties.divipola_dep',locations:V.map(r=>r.DPTO),z:V.map(r=>r[k]),text:V.map(r=>r.departamento),
   colorscale:[[0,css('--seq0')],[.25,css('--seq1')],[.5,css('--seq2')],[.75,css('--seq3')],[1,css('--seq4')]],reversescale:false,
   marker:{line:{color:css('--surface'),width:1}},colorbar:{title:{text:unidad,font:{color:css('--ink2')}},tickfont:{color:css('--ink2')},thickness:12,len:.8,outlinewidth:0},
-  hovertemplate:'%{text}: %{z:.1f} '+unidad+'<extra></extra>'}],
+  customdata:V.map(cuenta),hovertemplate:'<b>%{text}</b>: %{z:.1f} '+unidad+'<br>%{customdata}<extra></extra>'}],
   {height:460,margin:{l:0,r:0,t:10,b:0},geo:{fitbounds:'locations',visible:false,bgcolor:css('--surface')}});
  const sub=el.parentElement.querySelector('.sub');if(sub&&!sub.dataset.ok){sub.dataset.ok=1;sub.innerHTML+=' <b>Más oscuro = valor más alto.</b> Vacío = sin dato.'}}
 DIBUJAR=()=>{const R=DATA.d.por_dpto,sum=k=>R.reduce((s,r)=>s+(r[k]||0),0);
  txt('nd',f0(R.length));txt('nr',f0(sum('municipios_rurales'))+' de '+f0(sum('municipios_total')));txt('nc',f0(sum('creditos_total')));
- txt('pm',pct(100*sum('creditos_mujeres')/(sum('creditos_mujeres')+sum('creditos_hombres'))));
+ txt('pm',pct(100*sum('creditos_mujeres')/(sum('creditos_mujeres')+sum('creditos_hombres'))));txt('pm_n',f0(sum('creditos_mujeres'))+' créditos a mujeres');
  const C=[...R].filter(r=>r.creditos_total>0).sort((a,b)=>b.creditos_total-a.creditos_total),y=C.map(r=>r.departamento);
  plot('cred_dpto',[['Mujeres','creditos_mujeres'],['Hombres','creditos_hombres'],['Sin dato / persona jurídica','creditos_otros']].map(([n,k])=>({type:'bar',orientation:'h',name:n,y,x:C.map(r=>r[k]),
   marker:{color:colorSexo(n),cornerradius:2,line:{color:css('--surface'),width:2}},hovertemplate:'%{y}<br>'+n+': %{x:,.0f}<extra></extra>'})),
@@ -340,8 +367,12 @@ DIBUJAR=()=>{const R=DATA.d.por_dpto,sum=k=>R.reduce((s,r)=>s+(r[k]||0),0);
  tabla('cred_dpto_t',['Departamento','Mujeres','Hombres','Sin dato / jurídica','% mujeres'],C.map(r=>[r.departamento,f0(r.creditos_mujeres),f0(r.creditos_hombres),f0(r.creditos_otros),pct(r.pct_creditos_mujeres)]));
  document.getElementById('tabla_dptos').innerHTML='<table><thead><tr><th>Departamento</th><th>Municipios rurales</th><th>Ruralidad</th><th>IPM</th><th>Inseg. alimentaria</th><th>Inclusión tradicional</th><th>Inclusión con móvil</th><th>Créditos Finagro</th><th>% mujeres</th></tr></thead><tbody>'+
   R.map(r=>'<tr><td>'+r.departamento+'</td><td class="n">'+f0(r.municipios_rurales)+' / '+f0(r.municipios_total)+'</td><td class="n">'+pct(r.ruralidad_pct)+'</td><td class="n">'+pct(r.ipm)+'</td><td class="n">'+pct(r.inseguridad_alimentaria)+'</td><td class="n">'+pct(r.inclusion_financiera_pct)+'</td><td class="n">'+pct(r.inclusion_con_movil_pct)+'</td><td class="n">'+f0(r.creditos_total)+'</td><td class="n">'+pct(r.pct_creditos_mujeres)+'</td></tr>').join('')+'</tbody></table>';
- mapa('map_rural',R,'ruralidad_pct','%');mapa('map_ipm',R,'ipm','%');mapa('map_fies',R,'inseguridad_alimentaria','%');mapa('map_incl',R,'inclusion_financiera_pct','%');
- mapa('map_movil',R,'inclusion_con_movil_pct','%');mapa('map_mujeres',R,'pct_creditos_mujeres','%');};"""
+ mapa('map_rural',R,'ruralidad_pct','%',r=>f0(r.municipios_rurales)+' de '+f0(r.municipios_total)+' municipios');
+ mapa('map_ipm',R,'ipm','%',()=>'TerriData no publica el número de personas');
+ mapa('map_fies',R,'inseguridad_alimentaria','%',r=>cant(r.inseguridad_hogares,'hogares rurales'));
+ mapa('map_incl',R,'inclusion_financiera_pct','%',r=>cant(r.hogares_incluidos,'de '+f0(r.hogares_estimados)+' hogares'));
+ mapa('map_movil',R,'inclusion_con_movil_pct','%',r=>cant(r.hogares_incluidos_movil,'de '+f0(r.hogares_estimados)+' hogares'));
+ mapa('map_mujeres',R,'pct_creditos_mujeres','%',r=>f0(r.creditos_mujeres)+' de '+f0(r.creditos_mujeres+r.creditos_hombres)+' créditos');};"""
     pagina("departamentos_dashboard.html", "El territorio: departamentos",
            "Cómo cambian la ruralidad, la pobreza, la alimentación, la inclusión financiera y el crédito rural entre departamentos.",
            cuerpo, {"d": dep, "geo": json.loads((BASE / "referencias" / "departamentos_colombia.geojson").read_text(encoding="utf-8"))}, script)
@@ -389,33 +420,42 @@ def tablero_financiero(cr: dict, inc: dict) -> None:
  par('fg_ibr',F,'margen_ibr_puntos',x=>f1(x)+' pts');par('fg_fag',F,'pct_con_garantia_fag',pct);
  par('sf_n',S,'creditos',f0);par('sf_monto',S,'monto_promedio',copM);par('sf_tasa',S,'tasa_ponderada_ea',x=>f1(x)+' % E.A.');
  const N=I.inclusion_nacional||{};txt('inc_t',pct(N.tradicional));txt('inc_m',pct(N.con_movil));
+ txt('inc_t_n',cant(N.hogares_incluidos,'de '+f0(N.hogares_estimados)+' hogares'));txt('inc_m_n',cant(N.hogares_incluidos_movil,'de '+f0(N.hogares_estimados)+' hogares'));
  SEXOS.forEach(s=>txt('inc_j_'+s.toLowerCase(),pct((I.inclusion_por_sexo_jefatura||{})[s])));
  const fuentes=['Finagro','Superfinanciera'];
  barrasSexo('n_fuente',fuentes,Object.fromEntries(SEXOS.map(s=>[s,[F[s].creditos,S[s].creditos]])),{fmt:f0,titulo:'Número de créditos'});
  tabla('n_fuente_t',['Fuente','Mujeres','Hombres','% mujeres'],fuentes.map((n,i)=>{const o=[F,S][i];return [n,f0(o.Mujeres.creditos),f0(o.Hombres.creditos),pct(100*o.Mujeres.creditos/(o.Mujeres.creditos+o.Hombres.creditos))]}));
- barrasSexo('monto_fuente',fuentes,Object.fromEntries(SEXOS.map(s=>[s,[F[s].monto_promedio/1e6,S[s].monto_promedio/1e6]])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito'});
+ barrasSexo('monto_fuente',fuentes,Object.fromEntries(SEXOS.map(s=>[s,[F[s].monto_promedio/1e6,S[s].monto_promedio/1e6]])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito',n:Object.fromEntries(SEXOS.map(s=>[s,[F[s].creditos,S[s].creditos]])),unidad:'créditos'});
  tabla('monto_fuente_t',['Fuente','Mujeres','Hombres'],fuentes.map((n,i)=>{const o=[F,S][i];return [n,cop(o.Mujeres.monto_promedio),cop(o.Hombres.monto_promedio)]}));
  const TC=DATA.c.superfinanciera.tipo_credito_condiciones||{},tipos=Object.keys(TC.Mujeres||{}).filter(t=>SEXOS.every(s=>((TC[s]||{})[t]||{}).creditos>=100))
   .sort((a,b)=>TC.Hombres[b].creditos+TC.Mujeres[b].creditos-TC.Hombres[a].creditos-TC.Mujeres[a].creditos);
- barrasSexo('tasa_tipo',tipos,Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].tasa_ponderada_ea)])),{fmt:x=>f1(x)+' %',titulo:'Tasa efectiva anual (%)'});
+ barrasSexo('tasa_tipo',tipos,Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].tasa_ponderada_ea)])),{fmt:x=>f1(x)+' %',titulo:'Tasa efectiva anual (%)',n:Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].creditos)])),unidad:'créditos'});
  tabla('tasa_tipo_t',['Tipo de crédito','Mujeres','Hombres','Créditos mujeres','Créditos hombres'],tipos.map(t=>[t,f1(TC.Mujeres[t].tasa_ponderada_ea)+' %',f1(TC.Hombres[t].tasa_ponderada_ea)+' %',f0(TC.Mujeres[t].creditos),f0(TC.Hombres[t].creditos)]));
- barrasSexo('monto_tipo',tipos,Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].monto_promedio/1e6)])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito'});
+ barrasSexo('monto_tipo',tipos,Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].monto_promedio/1e6)])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito',n:Object.fromEntries(SEXOS.map(s=>[s,tipos.map(t=>TC[s][t].creditos)])),unidad:'créditos'});
  tabla('monto_tipo_t',['Tipo de crédito','Mujeres','Hombres'],tipos.map(t=>[t,cop(TC.Mujeres[t].monto_promedio),cop(TC.Hombres[t].monto_promedio)]));
  const LM=DATA.c.finagro.linea_monto_promedio||{},lineas=Object.keys(LM.Mujeres||{});
- barrasSexo('linea_monto',lineas,Object.fromEntries(SEXOS.map(s=>[s,lineas.map(l=>(LM[s]||{})[l]/1e6)])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito'});
+ const LC=DATA.c.finagro.linea_credito||{};
+ barrasSexo('linea_monto',lineas,Object.fromEntries(SEXOS.map(s=>[s,lineas.map(l=>(LM[s]||{})[l]/1e6)])),{fmt:x=>'$'+f1(x)+' M',titulo:'Millones de pesos por crédito',n:Object.fromEntries(SEXOS.map(s=>[s,lineas.map(l=>(LC[s]||{})[l])])),unidad:'créditos'});
  tabla('linea_monto_t',['Línea','Mujeres','Hombres'],lineas.map(l=>[l,cop(LM.Mujeres[l]),cop((LM.Hombres||{})[l])]));
- const dist=(id,obj,top=8)=>{const tot=Object.fromEntries(SEXOS.map(s=>[s,Object.values(obj[s]||{}).reduce((a,b)=>a+b,0)]));
-  const cats=[...new Set(SEXOS.flatMap(s=>Object.keys(obj[s]||{})))].sort((a,b)=>((obj.Mujeres||{})[b]||0)+((obj.Hombres||{})[b]||0)-((obj.Mujeres||{})[a]||0)-((obj.Hombres||{})[a]||0)).slice(0,top);
-  const ser=Object.fromEntries(SEXOS.map(s=>[s,cats.map(c=>100*((obj[s]||{})[c]||0)/tot[s])]));barrasSexo(id,cats,ser,{rango:[0,100]});
-  tabla(id+'_t',['Categoría','Mujeres','Hombres'],cats.map((c,i)=>[c,pct(ser.Mujeres[i]),pct(ser.Hombres[i])]))};
- dist('linea',DATA.c.finagro.linea_credito);dist('productor',DATA.c.finagro.tipo_productor);dist('tipo_sf',DATA.c.superfinanciera.tipo_credito,4);
- if(I.productos_pct){const P=I.productos_pct;barras('productos',P.map(p=>p.producto),P.map(p=>p.pct),{rango:[0,100]});tabla('productos_t',['Producto','% de hogares'],P.map(p=>[p.producto,pct(p.pct)]))}
+ // Donas Mujeres | Hombres: composición del crédito dentro de cada sexo (partes de un todo).
+ const donaSexo=(id,obj,cats,colores,agrupar=null)=>{const val=s=>cats.map(c=>agrupar?agrupar(obj[s]||{},c):((obj[s]||{})[c]||0));
+  donas(id,SEXOS.map(s=>({nombre:s,valores:val(s)})),cats,{colores,unidad:'créditos'});
+  tabla(id+'_t',['Categoría','Mujeres (créditos)','Mujeres (%)','Hombres (créditos)','Hombres (%)'],cats.map((c,i)=>{const m=val('Mujeres'),h=val('Hombres'),tm=m.reduce((a,b)=>a+b,0),th=h.reduce((a,b)=>a+b,0);
+   return [c,f0(m[i]),pct(100*m[i]/tm),f0(h[i]),pct(100*h[i]/th)]}))};
+ donaSexo('linea',DATA.c.finagro.linea_credito,['Inversión','Capital de Trabajo','Normalización de Cartera'],PAL_CAT());
+ donaSexo('productor',DATA.c.finagro.tipo_productor,['Pequeño ppib','Pequeño','Mediano','Grande'],PAL_ORD());
+ const PRIN=['Consumo','Crédito productivo'];
+ donaSexo('tipo_sf',DATA.c.superfinanciera.tipo_credito,[...PRIN,'Comercial y otros'],PAL_CAT(),(o,c)=>c==='Comercial y otros'?Object.entries(o).filter(([k])=>!PRIN.includes(k)).reduce((a,[,v])=>a+v,0):(o[c]||0));
+ if(I.productos_pct){const P=I.productos_pct;barras('productos',P.map(p=>p.producto),P.map(p=>p.pct),{rango:[0,100],n:P.map(p=>p.hogares),unidad:'hogares'});tabla('productos_t',['Producto','% de hogares','Hogares estimados'],P.map(p=>[p.producto,pct(p.pct),f0(p.hogares)]))}
  else document.getElementById('productos').outerHTML='<div class="pendiente">Pendiente de re-ejecución con microdatos GEIH.</div>';
  const IS=I.inclusion_por_sexo_jefatura||{},IM=I.inclusion_movil_por_sexo_jefatura||{},ci=['Solo productos tradicionales','Con plataforma móvil'];
- barrasSexo('incl_sexo',ci,Object.fromEntries(SEXOS.map(s=>[s,[IS[s],IM[s]]])),{rango:[0,100]});
+ const IH=I.inclusion_hogares_por_sexo_jefatura||{};
+ barrasSexo('incl_sexo',ci,Object.fromEntries(SEXOS.map(s=>[s,[IS[s],IM[s]]])),{rango:[0,100],n:Object.fromEntries(SEXOS.map(s=>[s,[(IH[s]||{}).incluidos,(IH[s]||{}).incluidos_movil]])),unidad:'hogares'});
  tabla('incl_sexo_t',['Medida','Jefatura mujer','Jefatura hombre'],ci.map((c,i)=>[c,pct([IS.Mujeres,IM.Mujeres][i]),pct([IS.Hombres,IM.Hombres][i])]));
- const grupo=(id,arr,k)=>{const cats=[...new Set(arr.map(x=>x[k]))],ser=Object.fromEntries(SEXOS.map(s=>[s,cats.map(c=>(arr.find(x=>x[k]===c&&x.sexo===s)||{}).pct??null)]));
-  barrasSexo(id,cats.map(c=>String(c).replace(/^\d\.\s/,'')),ser,{rango:[0,100]});tabla(id+'_t',['Grupo','Jefatura mujer','Jefatura hombre'],cats.map((c,i)=>[c,pct(ser.Mujeres[i]),pct(ser.Hombres[i])]))};
+ const grupo=(id,arr,k)=>{const cats=[...new Set(arr.map(x=>x[k]))],cel=(c,s)=>arr.find(x=>x[k]===c&&x.sexo===s)||{},
+  ser=Object.fromEntries(SEXOS.map(s=>[s,cats.map(c=>cel(c,s).pct??null)])),nn=Object.fromEntries(SEXOS.map(s=>[s,cats.map(c=>cel(c,s).hogares_incluidos)]));
+  barrasSexo(id,cats.map(c=>String(c).replace(/^\d\.\s/,'')),ser,{rango:[0,100],n:nn,unidad:'hogares con productos'});
+  tabla(id+'_t',['Grupo','Jefatura mujer','Hogares (mujer)','Jefatura hombre','Hogares (hombre)'],cats.map((c,i)=>[c,pct(ser.Mujeres[i]),cant(cel(c,'Mujeres').hogares_incluidos,'de '+f0(cel(c,'Mujeres').hogares_estimados)),pct(ser.Hombres[i]),cant(cel(c,'Hombres').hogares_incluidos,'de '+f0(cel(c,'Hombres').hogares_estimados))]))};
  grupo('educacion',I.inclusion_por_educacion,'nivel');grupo('tamano',I.inclusion_por_tamano.map(x=>({...x,tamano:x.tamano+(x.tamano==='1'?' persona':' personas')})),'tamano');};"""
     pagina("financiero_dashboard.html", "Crédito rural e inclusión financiera",
            "Acceso y condiciones del crédito formal para mujeres y hombres en municipios rurales, y uso de productos financieros en los hogares.",

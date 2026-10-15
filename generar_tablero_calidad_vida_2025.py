@@ -57,14 +57,21 @@ def main() -> None:
     def pct(expr: str) -> str:
         return f"100*SUM(CAST(({expr}) AS DOUBLE)*w)/NULLIF(SUM(w),0)"
 
+    def n(expr: str) -> str:  # hogares estimados (Σ w) que cumplen la condición
+        return f"SUM(CAST(({expr}) AS DOUBLE)*w)"
+
     cob = ",".join(f"{pct(k)} cobertura_{k}" for k, _, _ in SERVICIOS)
-    geih_dpto = con.execute(f"""SELECT DPTO, COUNT(*) hogares_muestra, SUM(personas*w)/SUM(w) personas_hogar,
+    geih_dpto = con.execute(f"""SELECT DPTO, COUNT(*) hogares_muestra, SUM(w) hogares_estimados, SUM(personas*w)/SUM(w) personas_hogar,
+          {n('contaminacion')} contaminacion_n, {n('acueducto')} acueducto_n,
           SUM(ingreso_persona*w) FILTER (WHERE ocupados>0)/SUM(w) FILTER (WHERE ocupados>0) ingreso_persona_media,
           {pct('contaminacion')} contaminacion_proxy_pct, {cob}
         FROM hogares GROUP BY 1""").fetchdf().set_index("DPTO")
     nacional = con.execute(f"SELECT COUNT(*), {pct('contaminacion')}, {cob} FROM hogares").fetchone()
-    ambiental = dict(zip(["Cocina con leña, carbón o desechos", "Quema, entierra o tira la basura", "Sanitario sin conexión o sin servicio"],
-                         con.execute(f"SELECT {pct('amb_cocina')}, {pct('amb_basura')}, {pct('amb_sanitario')} FROM hogares").fetchone()))
+    servicios_n = con.execute("SELECT " + ",".join(n(k) for k, _, _ in SERVICIOS) + ", SUM(w), " + n("contaminacion") + " FROM hogares").fetchone()
+    hogares_estimados = servicios_n[-2]
+    nombres_amb = ["Cocina con leña, carbón o desechos", "Quema, entierra o tira la basura", "Sanitario sin conexión o sin servicio"]
+    ambiental = dict(zip(nombres_amb, con.execute(f"SELECT {pct('amb_cocina')}, {pct('amb_basura')}, {pct('amb_sanitario')} FROM hogares").fetchone()))
+    ambiental_n = dict(zip(nombres_amb, con.execute(f"SELECT {n('amb_cocina')}, {n('amb_basura')}, {n('amb_sanitario')} FROM hogares").fetchone()))
 
     def resumen(col: str) -> dict:
         r = con.execute(f"""SELECT COUNT(*), quantile_cont({col},0.05), quantile_cont({col},0.25), median({col}),
@@ -73,8 +80,9 @@ def main() -> None:
         return dict(zip(["n", "p5", "q1", "mediana", "q3", "p95", "media"], r))
 
     proporcion = "LEAST(ocupados/NULLIF(personas,0),1)"
-    ocupacion = con.execute(f"""SELECT {pct(f'{proporcion}=0')}, {pct(f'{proporcion}>0 AND {proporcion}<=0.5')},
-        {pct(f'{proporcion}>0.5 AND {proporcion}<1')}, {pct(f'{proporcion}>=1')} FROM hogares""").fetchone()
+    grupos_ocu = [f"{proporcion}=0", f"{proporcion}>0 AND {proporcion}<=0.5", f"{proporcion}>0.5 AND {proporcion}<1", f"{proporcion}>=1"]
+    ocupacion = con.execute("SELECT " + ",".join(pct(g) for g in grupos_ocu) + " FROM hogares").fetchone()
+    ocupacion_n = con.execute("SELECT " + ",".join(n(g) for g in grupos_ocu) + " FROM hogares").fetchone()
 
     # FIES y TerriData son anexos que se procesan aparte; si no están, se conservan
     # los valores ya publicados y se avisa en el tablero.
@@ -93,14 +101,21 @@ def main() -> None:
         ipm_rural = ant.get("ipm_rural_componentes", {})
         pendientes.append("IPM (TerriData): se conservan los valores publicados; falta plata/terridata_dim1_limpia.parquet para recalcular.")
     if FIES_PREV.exists():
-        fies = {}
-        for nombre, valor in con.execute(f"SELECT Departamento, Inseguridad_Moderada_Grave_Pct FROM read_parquet('{FIES_PREV}')").fetchall():
-            fies["00" if str(nombre).strip().lower() == "total nacional" else dpto_por_nombre(nombre)] = valor
-        exp = [{"indicador": i.replace("_", " "), "pct": nac if nac is not None else prom} for i, nac, prom in con.execute(f"""
-            SELECT Indicador, AVG(Porcentaje) FILTER (WHERE lower(Departamento)='total nacional'), AVG(Porcentaje)
+        # El anexo FIES publica los hogares en miles: se multiplican por 1.000.
+        fies, fies_hog = {}, {}
+        for nombre, valor, total in con.execute(f"""SELECT Departamento, Inseguridad_Moderada_Grave_Pct, Total_Hogares
+                FROM read_parquet('{FIES_PREV}')""").fetchall():
+            d = "00" if str(nombre).strip().lower() == "total nacional" else dpto_por_nombre(nombre)
+            fies[d] = valor
+            fies_hog[d] = valor / 100 * total * 1000 if valor is not None and total is not None else None
+        exp = [{"indicador": i.replace("_", " "), "pct": nac if nac is not None else prom, "hogares": h * 1000 if h else None}
+               for i, nac, prom, h in con.execute(f"""
+            SELECT Indicador, AVG(Porcentaje) FILTER (WHERE lower(Departamento)='total nacional'), AVG(Porcentaje),
+                   AVG(Total) FILTER (WHERE lower(Departamento)='total nacional')
             FROM read_parquet('{FIES_EXP}') GROUP BY 1 ORDER BY 3 DESC""").fetchall()]
     else:
         fies = {d: r.get("inseguridad_alimentaria") for d, r in ant_dpto.items()} | {"00": ant.get("fies_rural_nacional")}
+        fies_hog = {d: r.get("inseguridad_hogares") for d, r in ant_dpto.items()} | {"00": ant.get("fies_rural_hogares")}
         exp = ant.get("fies_experiencias", [])
         pendientes.append("FIES (inseguridad alimentaria): se conservan los valores publicados (promedio simple departamental; "
                           "Valle del Cauca y San Andrés sin dato). Falta plata/fies_2025_rural_*.parquet para recalcular por código DPTO.")
@@ -111,18 +126,22 @@ def main() -> None:
     for d, nombre in DEPARTAMENTOS.items():
         fila = geih_dpto.loc[d].to_dict() if d in geih_dpto.index else {}
         por_dpto.append({"DPTO": d, "departamento": nombre, **{k: (None if v != v else v) for k, v in fila.items()},
-                         "inseguridad_alimentaria": fies.get(d), "ipm": ipm.get(d)})
+                         "inseguridad_alimentaria": fies.get(d), "inseguridad_hogares": fies_hog.get(d), "ipm": ipm.get(d)})
     guardar_json("calidad_vida_rural_2025.json", {
         "origen": f"GEIH 2025 ({n} meses), FIES/ECV 2025 y TerriData, zona rural.",
         "pendientes": pendientes,
         "hogares_muestra": nacional[0],
-        "servicios": [{"servicio": s, "pct": v} for (_, s, _), v in zip(SERVICIOS, nacional[2:])],
+        "hogares_estimados": hogares_estimados,
+        "servicios": [{"servicio": s, "pct": v, "hogares": h} for (_, s, _), v, h in zip(SERVICIOS, nacional[2:], servicios_n)],
         "contaminacion_pct": nacional[1],
+        "contaminacion_hogares": servicios_n[-1],
         "contaminacion_componentes": ambiental,
+        "contaminacion_componentes_hogares": ambiental_n,
         "ingreso": {"hogar": hogar, "persona": persona},
-        "ocupacion_hogar": [{"grupo": g, "pct": v} for g, v in
-                            zip(["Ninguna persona", "Hasta la mitad", "Más de la mitad", "Todo el hogar"], ocupacion)],
+        "ocupacion_hogar": [{"grupo": g, "pct": v, "hogares": h} for g, v, h in
+                            zip(["Ninguna persona", "Hasta la mitad", "Más de la mitad", "Todo el hogar"], ocupacion, ocupacion_n)],
         "fies_rural_nacional": fies.get("00"),
+        "fies_rural_hogares": fies_hog.get("00"),
         "fies_experiencias": exp,
         "ipm_rural_componentes": ipm_rural,
         "por_dpto": por_dpto,

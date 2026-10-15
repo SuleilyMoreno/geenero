@@ -2,13 +2,13 @@
 <title>Crédito formal y género en la ruralidad colombiana, 2025 · Crédito rural 2025</title><style>
 :root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6d68;
 --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--accent:#256abf;--mujeres:#d55181;--hombres:#2a78d6;
---otro:#898781;--serie:#2a78d6;--warn-bg:#fff6e0;--warn-ink:#6b4a00;--seq0:#cde2fb;--seq1:#86b6ef;--seq2:#3987e5;--seq3:#1c5cab;--seq4:#0d366b}
+--otro:#898781;--serie:#2a78d6;--cat1:#eb6834;--cat2:#1baf7a;--cat3:#6250d6;--ord1:#86b6ef;--ord2:#3987e5;--ord3:#1c5cab;--ord4:#0d366b;--warn-bg:#fff6e0;--warn-ink:#6b4a00;--seq0:#cde2fb;--seq1:#86b6ef;--seq2:#3987e5;--seq3:#1c5cab;--seq4:#0d366b}
 @media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
 --ink:#f0efec;--ink2:#c3c2b7;--muted:#a3a198;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--accent:#6da7ec;
---mujeres:#d55181;--hombres:#3987e5;--otro:#898781;--serie:#3987e5;--warn-bg:#2a2210;--warn-ink:#f3d58a}}
+--mujeres:#d55181;--hombres:#3987e5;--otro:#898781;--serie:#3987e5;--cat1:#d95926;--cat2:#199e70;--cat3:#9085e9;--ord1:#184f95;--ord2:#2a78d6;--ord3:#6da7ec;--ord4:#b7d3f6;--warn-bg:#2a2210;--warn-ink:#f3d58a}}
 :root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#a3a198;
 --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--accent:#6da7ec;--mujeres:#d55181;--hombres:#3987e5;--otro:#898781;
---serie:#3987e5;--warn-bg:#2a2210;--warn-ink:#f3d58a}
+--serie:#3987e5;--cat1:#d95926;--cat2:#199e70;--cat3:#9085e9;--ord1:#184f95;--ord2:#2a78d6;--ord3:#6da7ec;--ord4:#b7d3f6;--warn-bg:#2a2210;--warn-ink:#f3d58a}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 a{color:var(--accent)}main{max-width:1280px;margin:0 auto;padding:24px 16px 64px}
@@ -27,7 +27,7 @@ border-radius:999px;padding:4px 12px;font-size:13px;color:var(--ink2)}.chip b{co
 .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:16px}
 .card{grid-column:span 6;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;min-width:0}
 .card.wide{grid-column:span 12}.kpi{grid-column:span 3}
-.kpi .label{font-size:13px;color:var(--ink2)}.kpi .value{font-size:30px;font-weight:700;margin:6px 0 2px}
+.kpi .label{font-size:13px;color:var(--ink2)}.kpi .cuenta{font-size:13px;color:var(--ink2);margin:0}.kpi .value{font-size:30px;font-weight:700;margin:6px 0 2px}
 .pair{display:flex;gap:20px;flex-wrap:wrap}.pair .value{font-size:22px;white-space:nowrap}.pair small{display:flex;align-items:center;gap:6px;color:var(--ink2)}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .sub{color:var(--ink2);font-size:13px;margin:0 0 8px}.src{color:var(--muted);font-size:12px;margin-top:8px}
@@ -115,16 +115,32 @@ function base(extra={}){return Object.assign({autosize:true,paper_bgcolor:css('-
 const CFG={displaylogo:false,responsive:true,modeBarButtonsToRemove:['lasso2d','select2d']};
 function deep(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k])deep(a[k],b[k]);else a[k]=b[k]}return a}
 function plot(id,traces,lay={}){const el=document.getElementById(id);if(!el)return;Plotly.react(el,traces,deep(base(),lay),CFG)}
+// Cantidad que representa un valor: «≈ 1.234.567 hogares». Las encuestas usan población expandida (Σ FEX ÷ 12).
+const cant=(x,u)=>x==null||!isFinite(x)?'':(u==='créditos'||u.startsWith('en la muestra')?'':'≈ ')+f0(x)+' '+u;
 // Barras horizontales agrupadas por sexo: categorías en el eje Y (sin rotar etiquetas).
-function barrasSexo(id,cats,series,{fmt=pct,titulo='Porcentaje (%)',rango=null,orden=null}={}){
+// n = {sexo: [cantidades]} y unidad = 'personas' | 'hogares' | 'créditos' se muestran al pasar el mouse.
+function barrasSexo(id,cats,series,{fmt=pct,titulo='Porcentaje (%)',rango=null,n=null,unidad=''}={}){
  const sx=Object.keys(series);plot(id,sx.map(s=>({type:'bar',orientation:'h',name:s,y:cats.map(c=>wrap(c,22)),x:series[s],
   marker:{color:colorSexo(s),cornerradius:4},text:series[s].map(fmt),textposition:'outside',cliponaxis:false,
-  textfont:{color:css('--ink2')},hovertemplate:'%{y}<br>'+s+': %{text}<extra></extra>'})),
+  customdata:cats.map((_,i)=>n&&n[s]?cant(n[s][i],unidad):''),
+  textfont:{color:css('--ink2')},hovertemplate:'%{y}<br><b>'+s+'</b>: %{text}<br>%{customdata}<extra></extra>'})),
   {barmode:'group',height:Math.max(320,cats.length*sx.length*30+100),yaxis:{autorange:'reversed'},xaxis:{title:{text:titulo},range:rango},margin:{l:10,r:60,t:30,b:50}})}
-function barras(id,cats,vals,{fmt=pct,titulo='Porcentaje (%)',rango=null,color=null,h=null}={}){
+function barras(id,cats,vals,{fmt=pct,titulo='Porcentaje (%)',rango=null,color=null,h=null,n=null,unidad=''}={}){
  plot(id,[{type:'bar',orientation:'h',y:cats.map(c=>wrap(c,24)),x:vals,marker:{color:color||css('--serie'),cornerradius:4},
-  text:vals.map(fmt),textposition:'outside',cliponaxis:false,textfont:{color:css('--ink2')},hovertemplate:'%{y}: %{text}<extra></extra>'}],
+  customdata:cats.map((_,i)=>n?cant(n[i],unidad):''),
+  text:vals.map(fmt),textposition:'outside',cliponaxis:false,textfont:{color:css('--ink2')},hovertemplate:'%{y}: <b>%{text}</b><br>%{customdata}<extra></extra>'}],
   {showlegend:false,height:h||Math.max(300,cats.length*30+80),yaxis:{autorange:'reversed'},xaxis:{title:{text:titulo},range:rango},margin:{l:10,r:70,t:10,b:50}})}
+const PAL_CAT=()=>['--cat1','--cat2','--cat3'].map(css), PAL_ORD=()=>['--ord1','--ord2','--ord3','--ord4'].map(css);
+// Donas: valores = cantidades (el % lo calcula Plotly). Una dona por grupo (p. ej. Mujeres | Hombres) en el mismo gráfico.
+function donas(id,grupos,labels,{colores,unidad='créditos'}={}){
+ const k=grupos.length,w=1/k;
+ plot(id,grupos.map((g,i)=>({type:'pie',hole:.62,sort:false,direction:'clockwise',name:g.nombre||'',labels,values:g.valores,
+  domain:{x:[i*w+.03,(i+1)*w-.03],y:[.05,.95]},marker:{colors:colores,line:{color:css('--surface'),width:2}},
+  texttemplate:'%{percent:.1%}',textposition:'outside',textfont:{color:css('--ink2')},automargin:true,
+  hovertemplate:(g.nombre?'<b>'+g.nombre+'</b><br>':'')+'%{label}: <b>%{percent:.1%}</b><br>%{value:,.0f} '+unidad+'<extra></extra>'})),
+  {showlegend:true,legend:{orientation:'h',y:-.05,x:.5,xanchor:'center'},height:400,margin:{l:20,r:20,t:30,b:50},
+   annotations:grupos.map((g,i)=>({text:(g.nombre?'<b>'+g.nombre+'</b><br>':'')+f0(g.valores.reduce((a,b)=>a+(b||0),0))+'<br>'+unidad,
+    x:i*w+w/2,y:.5,xref:'paper',yref:'paper',showarrow:false,font:{size:13,color:css('--ink')}}))})}
 // Tabla accesible gemela del gráfico.
 function tabla(id,cabeza,filas){const el=document.getElementById(id);if(!el)return;
  el.innerHTML='<details><summary>Ver tabla de datos</summary><div class="tabla"><table><thead><tr>'+cabeza.map(c=>'<th>'+c+'</th>').join('')+
