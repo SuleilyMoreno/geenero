@@ -15,7 +15,7 @@ from __future__ import annotations
 import duckdb
 
 from tablero_comun import (DEPARTAMENTOS, OCUPADOS, PLATA, VIVIENDA, dpto_por_nombre, geih,
-                           guardar_json, meses_geih, peso)
+                           guardar_json, meses_geih, peso, previo)
 
 FIES_PREV = PLATA / "fies_2025_rural_prevalencia.parquet"
 FIES_EXP = PLATA / "fies_2025_rural_experiencias.parquet"
@@ -40,16 +40,18 @@ def main() -> None:
       WITH v AS (
         SELECT mes_archivo, LPAD(CAST(DPTO AS VARCHAR),2,'0') DPTO, DIRECTORIO, HOGAR,
                MAX({peso('x', n)}) w, MAX(TRY_CAST(total_de_personas_en_el_hogar AS DOUBLE)) personas, {flags},
-               MAX(CASE WHEN TRY_CAST(con_que_energia_o_combustibe_cocinan_principalmente AS INTEGER) IN (5,6,7)
-                          OR TRY_CAST(como_eliminan_principalmente_la_basura_en_este AS INTEGER) IN (2,3,4,5)
-                          OR TRY_CAST(el_servicio_sanitario_que_utiliza_el_hogar AS INTEGER) IN (3,4,5,6)
-                        THEN 1 ELSE 0 END) contaminacion
+               -- P5080 5-7: leña o carbón de leña, carbón mineral, desechos
+               MAX(CASE WHEN TRY_CAST(con_que_energia_o_combustibe_cocinan_principalmente AS INTEGER) IN (5,6,7) THEN 1 ELSE 0 END) amb_cocina,
+               -- P5040 2-5: la tiran a fuente de agua o lote, la queman o entierran, otra forma
+               MAX(CASE WHEN TRY_CAST(como_eliminan_principalmente_la_basura_en_este AS INTEGER) IN (2,3,4,5) THEN 1 ELSE 0 END) amb_basura,
+               -- P5020 3-6: inodoro sin conexión, letrina, bajamar, sin servicio sanitario
+               MAX(CASE WHEN TRY_CAST(el_servicio_sanitario_que_utiliza_el_hogar AS INTEGER) IN (3,4,5,6) THEN 1 ELSE 0 END) amb_sanitario
         FROM {geih(VIVIENDA)} x GROUP BY 1,2,3,4),
       o AS (
         SELECT mes_archivo, DIRECTORIO, HOGAR, COUNT(DISTINCT ORDEN) ocupados,
                SUM(COALESCE(TRY_CAST(ingreso_laborales AS DOUBLE),0)) ingreso
         FROM {geih(OCUPADOS)} GROUP BY 1,2,3)
-      SELECT v.*, COALESCE(o.ocupados,0) ocupados, o.ingreso, o.ingreso/NULLIF(v.personas,0) ingreso_persona
+      SELECT v.*, GREATEST(amb_cocina, amb_basura, amb_sanitario) contaminacion, COALESCE(o.ocupados,0) ocupados, o.ingreso, o.ingreso/NULLIF(v.personas,0) ingreso_persona
       FROM v LEFT JOIN o USING (mes_archivo, DIRECTORIO, HOGAR)""")
 
     def pct(expr: str) -> str:
@@ -61,6 +63,8 @@ def main() -> None:
           {pct('contaminacion')} contaminacion_proxy_pct, {cob}
         FROM hogares GROUP BY 1""").fetchdf().set_index("DPTO")
     nacional = con.execute(f"SELECT COUNT(*), {pct('contaminacion')}, {cob} FROM hogares").fetchone()
+    ambiental = dict(zip(["Cocina con leña, carbón o desechos", "Quema, entierra o tira la basura", "Sanitario sin conexión o sin servicio"],
+                         con.execute(f"SELECT {pct('amb_cocina')}, {pct('amb_basura')}, {pct('amb_sanitario')} FROM hogares").fetchone()))
 
     def resumen(col: str) -> dict:
         r = con.execute(f"""SELECT COUNT(*), quantile_cont({col},0.05), quantile_cont({col},0.25), median({col}),
@@ -72,17 +76,34 @@ def main() -> None:
     ocupacion = con.execute(f"""SELECT {pct(f'{proporcion}=0')}, {pct(f'{proporcion}>0 AND {proporcion}<=0.5')},
         {pct(f'{proporcion}>0.5 AND {proporcion}<1')}, {pct(f'{proporcion}>=1')} FROM hogares""").fetchone()
 
-    ipm = dict(con.execute(IPM_SQL).fetchall())
-    fies = {}
-    for nombre, valor in con.execute(f"SELECT Departamento, Inseguridad_Moderada_Grave_Pct FROM read_parquet('{FIES_PREV}')").fetchall():
-        fies["00" if str(nombre).strip().lower() == "total nacional" else dpto_por_nombre(nombre)] = valor
-    exp = con.execute(f"""SELECT Indicador, AVG(Porcentaje) FILTER (WHERE lower(Departamento)='total nacional'),
-        AVG(Porcentaje) FROM read_parquet('{FIES_EXP}') GROUP BY 1 ORDER BY 3 DESC""").fetchall()
-    terri_cols = [r[0] for r in con.execute(f"SELECT DISTINCT indicador_nombre FROM read_parquet('{TERRIDATA}')").fetchall()]
-    componentes = [c for c in terri_cols if c.endswith("centros_poblados_y_rural_disperso")]
-    ipm_rural = dict(con.execute(f"""SELECT indicador_nombre, AVG(dato_numerico) FROM read_parquet('{TERRIDATA}')
-        WHERE indicador_nombre IN ({','.join(repr(c) for c in componentes) or "''"}) AND RIGHT(DIVIPOLA,3)='000'
-        GROUP BY 1""").fetchall())
+    # FIES y TerriData son anexos que se procesan aparte; si no están, se conservan
+    # los valores ya publicados y se avisa en el tablero.
+    ant, pendientes = previo("calidad_vida_rural_2025.json"), []
+    ant_dpto = {d["DPTO"]: d for d in ant.get("por_dpto", [])}
+    if TERRIDATA.exists():
+        ipm = dict(con.execute(IPM_SQL).fetchall())
+        terri_cols = [r[0] for r in con.execute(f"SELECT DISTINCT indicador_nombre FROM read_parquet('{TERRIDATA}')").fetchall()]
+        componentes = [c for c in terri_cols if c.endswith("centros_poblados_y_rural_disperso")]
+        ipm_rural = {k.replace("_en_centros_poblados_y_rural_disperso", "").replace("ipm_centros_poblados_y_rural_disperso", "IPM rural total")
+                     .replace("_", " "): v for k, v in con.execute(f"""SELECT indicador_nombre, AVG(dato_numerico) FROM read_parquet('{TERRIDATA}')
+            WHERE indicador_nombre IN ({','.join(repr(c) for c in componentes) or "''"}) AND RIGHT(DIVIPOLA,3)='000'
+            GROUP BY 1""").fetchall()}
+    else:
+        ipm = {d: r.get("ipm") for d, r in ant_dpto.items()}
+        ipm_rural = ant.get("ipm_rural_componentes", {})
+        pendientes.append("IPM (TerriData): se conservan los valores publicados; falta plata/terridata_dim1_limpia.parquet para recalcular.")
+    if FIES_PREV.exists():
+        fies = {}
+        for nombre, valor in con.execute(f"SELECT Departamento, Inseguridad_Moderada_Grave_Pct FROM read_parquet('{FIES_PREV}')").fetchall():
+            fies["00" if str(nombre).strip().lower() == "total nacional" else dpto_por_nombre(nombre)] = valor
+        exp = [{"indicador": i.replace("_", " "), "pct": nac if nac is not None else prom} for i, nac, prom in con.execute(f"""
+            SELECT Indicador, AVG(Porcentaje) FILTER (WHERE lower(Departamento)='total nacional'), AVG(Porcentaje)
+            FROM read_parquet('{FIES_EXP}') GROUP BY 1 ORDER BY 3 DESC""").fetchall()]
+    else:
+        fies = {d: r.get("inseguridad_alimentaria") for d, r in ant_dpto.items()} | {"00": ant.get("fies_rural_nacional")}
+        exp = ant.get("fies_experiencias", [])
+        pendientes.append("FIES (inseguridad alimentaria): se conservan los valores publicados (promedio simple departamental; "
+                          "Valle del Cauca y San Andrés sin dato). Falta plata/fies_2025_rural_*.parquet para recalcular por código DPTO.")
     hogar, persona = resumen("ingreso"), resumen("ingreso_persona")
     con.close()
 
@@ -93,19 +114,17 @@ def main() -> None:
                          "inseguridad_alimentaria": fies.get(d), "ipm": ipm.get(d)})
     guardar_json("calidad_vida_rural_2025.json", {
         "origen": f"GEIH 2025 ({n} meses), FIES/ECV 2025 y TerriData, zona rural.",
-        "pendientes": [],
+        "pendientes": pendientes,
         "hogares_muestra": nacional[0],
         "servicios": [{"servicio": s, "pct": v} for (_, s, _), v in zip(SERVICIOS, nacional[2:])],
         "contaminacion_pct": nacional[1],
+        "contaminacion_componentes": ambiental,
         "ingreso": {"hogar": hogar, "persona": persona},
         "ocupacion_hogar": [{"grupo": g, "pct": v} for g, v in
                             zip(["Ninguna persona", "Hasta la mitad", "Más de la mitad", "Todo el hogar"], ocupacion)],
         "fies_rural_nacional": fies.get("00"),
-        "fies_experiencias": [{"indicador": i.replace("_", " "), "pct": nac if nac is not None else prom}
-                              for i, nac, prom in exp],
-        "ipm_rural_componentes": {k.replace("_en_centros_poblados_y_rural_disperso", "")
-                                  .replace("ipm_centros_poblados_y_rural_disperso", "IPM rural total").replace("_", " "): v
-                                  for k, v in ipm_rural.items()},
+        "fies_experiencias": exp,
+        "ipm_rural_componentes": ipm_rural,
         "por_dpto": por_dpto,
     })
 

@@ -1,7 +1,7 @@
 {
- "origen": "Ejecución previa del pipeline con microdatos (resultados porcentuales válidos migrados desde los tableros anteriores).",
+ "origen": "Categorías de ruralidad DNP, TerriData IPM 2025, FIES 2025 rural y GEIH 2025 (12 meses) rural.",
  "pendientes": [
-  "Valle del Cauca y San Andrés sin dato FIES: la unión anterior era por nombre; se corrige al re-ejecutar (unión por DPTO)."
+  "IPM (TerriData): se conservan los valores publicados; falta plata/terridata_dim1_limpia.parquet para recalcular."
  ],
  "por_dpto": [
   {
@@ -12,7 +12,8 @@
    "ruralidad_pct": 49.6,
    "ipm": 9.5,
    "inseguridad_alimentaria": 24.6266339025,
-   "inclusion_financiera_pct": 42.32182362321289
+   "inclusion_financiera_pct": 42.32182362321287,
+   "inclusion_con_movil_pct": 59.794489984005125
   },
   {
    "DPTO": "08",
@@ -22,7 +23,8 @@
    "ruralidad_pct": 4.3478260869565215,
    "ipm": 8.2,
    "inseguridad_alimentaria": 54.721157381,
-   "inclusion_financiera_pct": 20.996936002505624
+   "inclusion_financiera_pct": 20.99693600250561,
+   "inclusion_con_movil_pct": 56.73324936021179
   },
   {
    "DPTO": "11",
@@ -31,8 +33,9 @@
    "municipios_rurales": 0,
    "ruralidad_pct": 0.0,
    "ipm": null,
-   "inseguridad_alimentaria": null,
-   "inclusion_financiera_pct": 33.774636987237216
+   "inseguridad_alimentaria": 9.1607834281,
+   "inclusion_financiera_pct": 33.774636987237216,
+   "inclusion_con_movil_pct": 60.77488173547043
   },
   {
    "DPTO": "13",
@@ -42,7 +45,8 @@
    "ruralidad_pct": 52.17391304347826,
    "ipm": 17.0,
    "inseguridad_alimentaria": 33.1584070727,
-   "inclusion_financiera_pct": 16.10624305823547
+   "inclusion_financiera_pct": 16.106243058235474,
+   "inclusion_con_movil_pct": 43.28562961547107
   },
   {
    "DPTO": "15",
@@ -52,7 +56,8 @@
    "ruralidad_pct": 71.54471544715447,
    "ipm": 6.4,
    "inseguridad_alimentaria": 22.1969277013,
-   "inclusion_financiera_pct": 32.38704265516883
+   "inclusion_financiera_pct": 32.38704265516881,
+   "inclusion_con_movil_pct": 46.92522988542799
   },
   {
    "DPTO": "17",
@@ -62,7 +67,8 @@
    "ruralidad_pct": 29.62962962962963,
    "ipm": 7.9,
    "inseguridad_alimentaria": 11.8093679231,
-   "inclusion_financiera_pct": 34.207721027450134
+   "inclusion_financiera_pct": 34.20772102745013,
+   "inclusion_con_movil_pct": 65.19241044686002
   },
   {
    "DPTO": "18",
@@ -72,7 +78,8 @@
    "ruralidad_pct": 93.75,
    "ipm": 15.0,
    "inseguridad_alimentaria": 19.9164838508,
-   "inclusion_financiera_pct": 16.591437799494784
+   "inclusion_financiera_pct": 16.59143779949478,
+   "inclusion_con_movil_pct": 50.51885242925295
   },
   {
    "DPTO": "19",
@@ -82,7 +89,8 @@
    "ruralidad_pct": 71.42857142857143,
    "ipm": 13.0,
    "inseguridad_alimentaria": 31.7001535951,
-   "inclusion_financiera_pct": 20.54276102984503
+   "inclusion_financiera_pct": 20.54276102984504,
+   "inclusion_con_movil_pct": 33.87436564998207
   },
   {
    "DPTO": "20",
@@ -92,7 +100,8 @@
    "ruralidad_pct": 80.0,
    "ipm": 14.8,
    "inseguridad_alimentaria": 43.0611609289,
-   "inclusion_financiera_pct": 21.317539959043547
+   "inclusion_financiera_pct": 21.317539959043543,
+   "inclusion_con_movil_pct": 54.83282595042065
   },
   {
    "DPTO": "23",
@@ -102,7 +111,8 @@
    "ruralidad_pct": 36.666666666666664,
    "ipm": 19.8,
    "inseguridad_alimentaria": 47.8105564474,
-   "inclusion_financiera_pct": 12.724548943090786
+   "inclusion_financiera_pct": 12.724548943090783,
+   "inclusion_con_movil_pct": 50.72463272586626
   },
   {
    "DPTO": "25",
@@ -112,7 +122,8 @@
    "ruralidad_pct": 49.13793103448276,
    "ipm": 4.1,
    "inseguridad_alimentaria": 17.6674795463,
-   "inclusion_financiera_pct": 43.617293291688554
+   "inclusion_financiera_pct": 43.61729329168856,
+   "inclusion_con_movil_pct": 65.3780886764789
   },
   {
    "DPTO": "27",
@@ -122,7 +133,8 @@
    "ruralidad_pct": 93.33333333333333,
    "ipm": 30.8,
    "inseguridad_alimentaria": 57.862031092,
-   "inclusion_financiera_pct": 7.854407867137357
+   "inclusion_financiera_pct": 7.854407867137355,
+   "inclusion_con_movil_pct": 26.697693145703415
   },
   {
    "DPTO": "41",
@@ -132,7 +144,8 @@
    "ruralidad_pct": 78.37837837837837,
    "ipm": 9.7,
    "inseguridad_alimentaria": 25.072236319,
-   "inclusion_financiera_pct": 31.64623932709207
+   "inclusion_financiera_pct": 31.646239327092054,
+   "inclusion_con_movil_pct": 67.79342038308246
   },
   {
    "DPTO": "44",
@@ -142,7 +155,8 @@
    "ruralidad_pct": 46.666666666666664,
    "ipm": 40.1,
    "inseguridad_alimentaria": 65.1040996776,
-   "inclusion_financiera_pct": 22.062664647538877
+   "inclusion_financiera_pct": 22.06266464753888,
+   "inclusion_con_movil_pct": 37.443691203029644
   },
   {
    "DPTO": "47",
@@ -152,7 +166,8 @@
    "ruralidad_pct": 70.0,
    "ipm": 17.6,
    "inseguridad_alimentaria": 33.8865718184,
-   "inclusion_financiera_pct": 14.631625089476604
+   "inclusion_financiera_pct": 14.631625089476614,
+   "inclusion_con_movil_pct": 47.9118983727004
   },
   {
    "DPTO": "50",
@@ -162,7 +177,8 @@
    "ruralidad_pct": 89.65517241379311,
    "ipm": 12.3,
    "inseguridad_alimentaria": 20.6866432276,
-   "inclusion_financiera_pct": 41.43909647001114
+   "inclusion_financiera_pct": 41.43909647001113,
+   "inclusion_con_movil_pct": 66.89505323232245
   },
   {
    "DPTO": "52",
@@ -172,7 +188,8 @@
    "ruralidad_pct": 60.9375,
    "ipm": 13.2,
    "inseguridad_alimentaria": 35.302465025,
-   "inclusion_financiera_pct": 19.087176359530577
+   "inclusion_financiera_pct": 19.087176359530577,
+   "inclusion_con_movil_pct": 32.61047670190291
   },
   {
    "DPTO": "54",
@@ -182,7 +199,8 @@
    "ruralidad_pct": 80.0,
    "ipm": 13.3,
    "inseguridad_alimentaria": 25.2962671778,
-   "inclusion_financiera_pct": 36.594060785149516
+   "inclusion_financiera_pct": 36.59406078514952,
+   "inclusion_con_movil_pct": 63.477999222298095
   },
   {
    "DPTO": "63",
@@ -192,7 +210,8 @@
    "ruralidad_pct": 25.0,
    "ipm": 6.7,
    "inseguridad_alimentaria": 16.8044261807,
-   "inclusion_financiera_pct": 53.45050654673542
+   "inclusion_financiera_pct": 53.45050654673542,
+   "inclusion_con_movil_pct": 71.96963540916256
   },
   {
    "DPTO": "66",
@@ -202,7 +221,8 @@
    "ruralidad_pct": 21.428571428571427,
    "ipm": 4.9,
    "inseguridad_alimentaria": 16.8363851522,
-   "inclusion_financiera_pct": 70.05903909115936
+   "inclusion_financiera_pct": 70.05903909115936,
+   "inclusion_con_movil_pct": 83.63057187856336
   },
   {
    "DPTO": "68",
@@ -212,7 +232,8 @@
    "ruralidad_pct": 80.45977011494253,
    "ipm": 6.9,
    "inseguridad_alimentaria": 25.2461142389,
-   "inclusion_financiera_pct": 46.30909331957719
+   "inclusion_financiera_pct": 46.30909331957719,
+   "inclusion_con_movil_pct": 83.85519037023732
   },
   {
    "DPTO": "70",
@@ -222,7 +243,8 @@
    "ruralidad_pct": 38.46153846153846,
    "ipm": 25.4,
    "inseguridad_alimentaria": 57.1350689224,
-   "inclusion_financiera_pct": 13.868258493833727
+   "inclusion_financiera_pct": 13.868258493833725,
+   "inclusion_con_movil_pct": 54.86941783492546
   },
   {
    "DPTO": "73",
@@ -232,7 +254,8 @@
    "ruralidad_pct": 65.95744680851064,
    "ipm": 12.2,
    "inseguridad_alimentaria": 25.6636364799,
-   "inclusion_financiera_pct": 37.734892208906295
+   "inclusion_financiera_pct": 37.73489220890629,
+   "inclusion_con_movil_pct": 64.41927230121209
   },
   {
    "DPTO": "76",
@@ -241,8 +264,9 @@
    "municipios_rurales": 12,
    "ruralidad_pct": 28.571428571428573,
    "ipm": 4.9,
-   "inseguridad_alimentaria": null,
-   "inclusion_financiera_pct": 39.24909109325137
+   "inseguridad_alimentaria": 18.6221696614,
+   "inclusion_financiera_pct": 39.249091093251366,
+   "inclusion_con_movil_pct": 56.102714277119375
   },
   {
    "DPTO": "81",
@@ -252,7 +276,8 @@
    "ruralidad_pct": 71.42857142857143,
    "ipm": 12.7,
    "inseguridad_alimentaria": 10.3778651193,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "85",
@@ -262,7 +287,8 @@
    "ruralidad_pct": 89.47368421052632,
    "ipm": 8.9,
    "inseguridad_alimentaria": 26.8900307639,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "86",
@@ -272,7 +298,8 @@
    "ruralidad_pct": 61.53846153846154,
    "ipm": 13.6,
    "inseguridad_alimentaria": 34.0025144626,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "88",
@@ -282,7 +309,8 @@
    "ruralidad_pct": 0.0,
    "ipm": 4.3,
    "inseguridad_alimentaria": null,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "91",
@@ -292,7 +320,8 @@
    "ruralidad_pct": 100.0,
    "ipm": 18.1,
    "inseguridad_alimentaria": 13.7144867774,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "94",
@@ -302,7 +331,8 @@
    "ruralidad_pct": 100.0,
    "ipm": 51.8,
    "inseguridad_alimentaria": 23.1302393445,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "95",
@@ -312,7 +342,8 @@
    "ruralidad_pct": 100.0,
    "ipm": 20.0,
    "inseguridad_alimentaria": 31.7047431505,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "97",
@@ -322,7 +353,8 @@
    "ruralidad_pct": 100.0,
    "ipm": 41.7,
    "inseguridad_alimentaria": 23.5968812737,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   },
   {
    "DPTO": "99",
@@ -332,7 +364,8 @@
    "ruralidad_pct": 100.0,
    "ipm": 55.2,
    "inseguridad_alimentaria": 51.5630317845,
-   "inclusion_financiera_pct": null
+   "inclusion_financiera_pct": null,
+   "inclusion_con_movil_pct": null
   }
  ]
 }

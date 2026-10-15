@@ -3,7 +3,7 @@
   "anio": 2025,
   "filtro_ruralidad": "Municipios con categoría DNP Rural o Rural disperso",
   "municipios_rurales": 691,
-  "fecha_extraccion": "2026-10-13",
+  "fecha_extraccion": "2026-10-15",
   "departamentos": {
    "05": "Antioquia",
    "08": "Atlántico",
@@ -246,6 +246,23 @@
     "Normalización de Cartera": 196.0
    }
   },
+  "linea_monto_promedio": {
+   "Hombres": {
+    "Capital de Trabajo": 18866601.20295988,
+    "Inversión": 27610485.599594086,
+    "Normalización de Cartera": 21385662.493950676
+   },
+   "Mujeres": {
+    "Capital de Trabajo": 13580143.662614094,
+    "Inversión": 21977938.392008007,
+    "Normalización de Cartera": 15706222.55625
+   },
+   "Sin dato / persona jurídica": {
+    "Capital de Trabajo": 526460608.61895996,
+    "Inversión": 903471106.5393848,
+    "Normalización de Cartera": 1761498406.7704082
+   }
+  },
   "tipo_productor": {
    "Hombres": {
     "Mediano": 15737.0,
@@ -472,6 +489,79 @@
     "Crédito productivo": 47.0,
     "Consumo": 13.0,
     "Comercial preferencial o corporativo": 3.0
+   }
+  },
+  "tipo_credito_condiciones": {
+   "Mujeres": {
+    "Comercial ordinario": {
+     "creditos": 5023.0,
+     "monto_promedio": 30290492.7881744,
+     "tasa_ponderada_ea": 15.712812180178906
+    },
+    "Consumo": {
+     "creditos": 195556.0,
+     "monto_promedio": 592117.7035528953,
+     "tasa_ponderada_ea": 22.358675264187948
+    },
+    "Crédito productivo": {
+     "creditos": 102170.0,
+     "monto_promedio": 12562246.248341395,
+     "tasa_ponderada_ea": 19.978698408038206
+    },
+    "Vivienda": {
+     "creditos": 60.0,
+     "monto_promedio": 84718699.25,
+     "tasa_ponderada_ea": 11.929678221934378
+    }
+   },
+   "Hombres": {
+    "Comercial ordinario": {
+     "creditos": 15781.0,
+     "monto_promedio": 39208467.13045054,
+     "tasa_ponderada_ea": 16.280266299699953
+    },
+    "Consumo": {
+     "creditos": 417629.0,
+     "monto_promedio": 882134.2939349749,
+     "tasa_ponderada_ea": 22.50084704088804
+    },
+    "Crédito productivo": {
+     "creditos": 148790.0,
+     "monto_promedio": 13906516.158489954,
+     "tasa_ponderada_ea": 19.479943844073173
+    },
+    "Vivienda": {
+     "creditos": 65.0,
+     "monto_promedio": 113511984.064,
+     "tasa_ponderada_ea": 12.139104266934268
+    },
+    "Microcredito": {
+     "creditos": 1.0,
+     "monto_promedio": 18500000.0,
+     "tasa_ponderada_ea": 20.580000000000002
+    }
+   },
+   "Sin dato / persona jurídica": {
+    "Comercial ordinario": {
+     "creditos": 14421.0,
+     "monto_promedio": 16441308.673861036,
+     "tasa_ponderada_ea": 16.49830069599187
+    },
+    "Crédito productivo": {
+     "creditos": 47.0,
+     "monto_promedio": 47499155.234042555,
+     "tasa_ponderada_ea": 18.03864255095805
+    },
+    "Consumo": {
+     "creditos": 13.0,
+     "monto_promedio": 281367.0,
+     "tasa_ponderada_ea": 38.73089346034082
+    },
+    "Comercial preferencial o corporativo": {
+     "creditos": 3.0,
+     "monto_promedio": 2525785470.0,
+     "tasa_ponderada_ea": 10.199499798967487
+    }
    }
   }
  }

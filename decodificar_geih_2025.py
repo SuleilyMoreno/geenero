@@ -28,8 +28,12 @@ def short_name(code: str, description: object) -> str:
     return result or code
 
 def dictionary(path: Path) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
-    raw = pd.read_excel(path, sheet_name="Plantilla Diccionario de Datos", header=0, dtype=str)
-    raw.columns = [str(c).strip() for c in raw.columns]
+    # El archivo oficial del DANE trae filas de título antes del encabezado:
+    # se ubica la fila que contiene "Nombre de la variable".
+    crudo = pd.read_excel(path, sheet_name="Plantilla Diccionario de Datos", header=None, dtype=str)
+    fila = next(i for i, r in crudo.iterrows() if r.astype(str).str.contains("Nombre de la variable").any())
+    raw = crudo.iloc[fila + 1:].copy()
+    raw.columns = [str(c).strip() for c in crudo.iloc[fila]]
     code_col = next(c for c in raw.columns if "Nombre de la variable" in c and "columna" in c)
     desc_col = next(c for c in raw.columns if "Descripción de la variable" in c)
     domain_col = next((c for c in raw.columns if "Dominios" in c), None)
